@@ -7,7 +7,9 @@
       "Read(./santa/web/debug_audio/**)",
       "Read(./santa/web/.cache/**)",
       "Read(./.env*)",
-      "Read(./.snapshots/**)"
+      "Read(./.snapshots/**)",
+      "Read(~/.santa-pii-terms.txt)",
+      "Read(~/.santa-pii-terms-cs.txt)"
     ]
   }
 }
