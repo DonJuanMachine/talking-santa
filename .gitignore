@@ -22,12 +22,18 @@ dist/
 # Older locations, still ignored in case a copy is left there
 /certs/
 *.local.sh
+# Certificates and keys, in any folder
+*.pem
+*.key
+*.p12
 
 # ---------------------------------------------------------------- Private runtime data (children's profiles, transcripts)
 # Never commit. Profiles now live in local/profiles.json; these are the older spots.
-/profiles.json
-/profiles.json.*
-/transcripts/
+# Unanchored on purpose: a copy in any folder (santa/profiles.json, tests/.../transcripts/) stays out too.
+profiles.json
+profiles.json.*
+transcripts/
+santa.env
 
 # ---------------------------------------------------------------- Voice app (santa/web)
 santa/web/.cache/
@@ -43,6 +49,10 @@ evals/report.md
 evals/backup/
 *.wav
 *.mp3
+*.m4a
+*.log
+*.sqlite
+*.db
 
 # VulnHunter scan results (may contain exploit PoCs): local only
 *_VULNHUNT_RESULTS_*/
