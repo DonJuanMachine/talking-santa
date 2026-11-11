@@ -71,10 +71,16 @@ untrusted devices.
   | Check | Tools |
   |---|---|
   | Secrets, in the working tree and git history | gitleaks |
-  | Dependency CVEs | pip-audit, Snyk |
+  | Dependency CVEs | pip-audit (`requirements.txt` and `requirements.lock`), Snyk (`requirements.txt`) |
   | Static analysis | bandit, Semgrep |
   | Broad sweep | Trivy |
   | Snyk Code (opt-in, uploads source) | `--with-snyk-code` |
+
+  `requirements.txt` pins almost nothing, so the exact versions that run are recorded in `requirements.lock`
+  (a `pip freeze` of the runtime environment). The scan audits that file as pinned and fails if pip-audit reports
+  anything. It checks Python package versions against public advisory databases only. It cannot see native code
+  bundled inside wheels (for example torch and mlx), model files, or advisories that are not published yet. The lock
+  is a snapshot: regenerate it after any install or upgrade (command in the README) and run the scan again.
 
 - **Regression tests:** each protection above has tests, which run with the normal suite (`pytest`).
 - **Reviews:** an AI-assisted security review ([VulnHunter](https://github.com/capitalone/VulnHunter)) was run on

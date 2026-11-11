@@ -228,6 +228,16 @@ child says them), pets, favorite things. Other keys are kept in the file but San
 pip install -e ".[dev]"      # or use the voice venv from above
 pytest                        # ~920 tests, ~25 s, no model server needed
 ```
+Tests always use a fresh temporary `SANTA_LOCAL_DIR` and `SANTA_PROFILES`, whatever your shell exports.
+
+### Regenerate requirements.lock
+`requirements.lock` is a `pip freeze` of the environment that actually runs Santa (web and voice stack included).
+Regenerate it from that environment after any install or upgrade, then audit it:
+```bash
+<runtime-venv>/bin/python -m pip freeze | grep -v -e "@ file://" -e "^-e" > requirements.lock
+pip-audit -r requirements.lock --no-deps --disable-pip
+```
+It is a record for auditing, not an install recipe: some pins (torch, mlx) are platform-specific (Apple silicon).
 
 ## Security & privacy
 Built for small children, so privacy and safety come first:
@@ -240,7 +250,7 @@ Built for small children, so privacy and safety come first:
   regression tests.
 - **Safe speech.** Every sentence Santa says passes a safety gate: no gift promises, no private details.
 - **Checked regularly.** A gitleaks pre-commit hook runs on every commit. `scripts/security-scan.sh` runs gitleaks,
-  pip-audit, Snyk, bandit, Semgrep and Trivy. An AI-assisted review (VulnHunter, 2026-11-10) found issues, and all
+  pip-audit (on `requirements.txt` and on `requirements.lock`, the versions that actually run), Snyk, bandit, Semgrep and Trivy. The dependency scan only covers published Python package advisories; see SECURITY.md for what it cannot see. An AI-assisted review (VulnHunter, 2026-11-10) found issues, and all
   were fixed.
 
 Found a security problem? Please report it privately; see [SECURITY.md](SECURITY.md). For bugs and ideas, see

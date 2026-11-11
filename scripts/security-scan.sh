@@ -20,7 +20,9 @@ run() {  # run <name> <cmd...>   (tool missing => SKIPPED; nonzero exit => FINDI
   "$@" >"$OUT/$name.txt" 2>&1
   local rc=$?
   if [ $rc -eq 0 ]; then declare_result "$name" "clean"; else declare_result "$name" "exit $rc - review $OUT/$name.txt"; fi
+  return $rc
 }
+AUDIT_FAILED=false
 
 echo "Scanning $ROOT"; echo "Reports: $OUT"; echo
 
@@ -29,7 +31,10 @@ run gitleaks-tree    gitleaks detect --source . --no-git --redact --no-banner
 run gitleaks-history gitleaks detect --source . --redact --no-banner
 
 # 2. Dependency CVEs (two databases)
-run pip-audit  pip-audit -r requirements.txt
+# requirements.txt = what is declared; requirements.lock = what actually runs (pip freeze of the runtime venv, see
+# README "Regenerate requirements.lock"). The lock is audited as pinned (no resolving, no installing). Any finding fails the scan.
+run pip-audit       pip-audit -r requirements.txt || AUDIT_FAILED=true
+run pip-audit-lock  pip-audit -r requirements.lock --no-deps --disable-pip || AUDIT_FAILED=true
 # snyk's pip scan spawns a bare `python` (absent on macOS) and needs the deps installed: use the project venv
 SNYK_PY="$ROOT/.venv/bin/python"; [ -x "$SNYK_PY" ] || SNYK_PY=python3
 run snyk-deps  snyk test --file=requirements.txt --package-manager=pip --command="$SNYK_PY"
@@ -45,3 +50,4 @@ run trivy trivy fs --scanners vuln,secret,misconfig --skip-dirs .venv --skip-dir
 if $WITH_SNYK_CODE; then run snyk-code snyk code test; else declare_result snyk-code "SKIPPED (opt-in: --with-snyk-code)"; fi
 
 echo; echo "Done. Summary: $OUT/SUMMARY.txt"
+if $AUDIT_FAILED; then echo "FAILED: pip-audit reported findings or errors (see above)."; exit 1; fi
