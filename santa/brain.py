@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Iterator
 
-from openai import OpenAI, Timeout
+from openai import DefaultHttpxClient, OpenAI, Timeout
 
 from . import arc, config, cues, gifts, memory, persona, safety, songs, spec, speech
 from .persona import build_system_prompt
@@ -75,8 +75,10 @@ _SUMMARY_MAX_LINES = 8      # end_call: only a child's last few turns are shown 
 
 class Santa:
     def __init__(self, model: str = config.MODEL, base_url: str = config.BASE_URL, client=None, profiles=None):
+        # trust_env=False: never route the model call through an HTTP proxy from the environment (I1).
         self.client = client if client is not None else OpenAI(
-            base_url=base_url, api_key="not-needed", timeout=Timeout(config.REQUEST_TIMEOUT), max_retries=0)
+            base_url=base_url, api_key="not-needed", timeout=Timeout(config.REQUEST_TIMEOUT), max_retries=0,
+            http_client=DefaultHttpxClient(trust_env=False))
         self.model = model
         self.profiles = profiles if profiles is not None else memory.load()
         self.history: list[dict] = []   # {"role": "user"|"assistant", "content": str}; facts notes are never stored

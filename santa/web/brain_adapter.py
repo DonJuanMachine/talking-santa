@@ -78,10 +78,12 @@ class SantaBrain:
     """One per app. new_call() starts a fresh conversation (history) that keeps the profiles and the warm model."""
 
     def __init__(self, client=None, profiles=None, model=None):
-        from openai import OpenAI, Timeout
+        from openai import DefaultHttpxClient, OpenAI, Timeout
         from santa import config
+        # trust_env=False: never route the model call through an HTTP proxy from the environment (I1).
         inner = client if client is not None else OpenAI(
-            base_url=config.BASE_URL, api_key="not-needed", timeout=Timeout(config.REQUEST_TIMEOUT), max_retries=0)
+            base_url=config.BASE_URL, api_key="not-needed", timeout=Timeout(config.REQUEST_TIMEOUT), max_retries=0,
+            http_client=DefaultHttpxClient(trust_env=False))
         self.client = CancellableClient(inner)
         self.profiles = profiles if profiles is not None else memory.load()
         self.model = model or config.MODEL
