@@ -134,3 +134,7 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
 
 ### Known open items
 - Persona issues F5, F7a; stale wish facts F3; F9 wording. (F12a is intended behaviour when the Stage I arc is on.)
+- Low, accepted trade-off of fix P1-1 (keep negation inside stand-alone `*...*` and `(...)` spans): a stand-alone
+  stage direction that contains a negation word (for example "no" or "not") is now spoken, because the negation stays
+  with its span instead of being cut out of it. Rare, since stage directions are normally stripped. Revisit if one is
+  ever heard.
