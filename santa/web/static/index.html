@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Call Santa</title>
+<style>
+  :root { --bg: #0b0d12; --fg: #fff; --green: #2fbf57; --red: #e5322d; --panel: rgba(28, 30, 38, .92); }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  body { overflow: hidden; }
+
+  /* FaceTime-style backdrop: Santa's picture fills the screen, blurred and darkened */
+  #backdrop { position: fixed; inset: -60px; background: url("/santa-image") center / cover no-repeat;
+    filter: blur(42px) brightness(.42) saturate(1.2); z-index: 0; }
+
+  #stage { position: relative; z-index: 1; height: 100%; display: flex; flex-direction: column;
+    align-items: center; justify-content: space-between; padding: 6vh 16px 7vh; }
+
+  /* name and call timer at the top */
+  #top { text-align: center; }
+  #name { font-size: clamp(30px, 5vw, 44px); font-weight: 600; letter-spacing: .2px; }
+  #sub { font-size: clamp(16px, 2.4vw, 20px); opacity: .85; margin-top: 4px; min-height: 1.3em;
+    font-variant-numeric: tabular-nums; }
+
+  /* the round picture, with ripple rings while ringing */
+  #avatar { position: relative; width: min(60vw, 46vh); aspect-ratio: 1; }
+  #avatar .ring { position: absolute; inset: 0; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .55);
+    opacity: 0; pointer-events: none; }
+  body[data-state="RINGING"] #avatar .ring { animation: ripple 2.4s ease-out infinite; }
+  body[data-state="RINGING"] #avatar .ring:nth-child(2) { animation-delay: .8s; }
+  body[data-state="RINGING"] #avatar .ring:nth-child(3) { animation-delay: 1.6s; }
+  @keyframes ripple { 0% { transform: scale(1); opacity: .7; } 100% { transform: scale(1.65); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) {
+    body[data-state="RINGING"] #avatar .ring { animation-duration: 4.8s; }
+  }
+  /* --lv (0..1) is set by app.js from Santa's voice level: a warm aura that swells when he talks louder */
+  #picture { --lv: 0; position: relative; width: 100%; height: 100%; border-radius: 50%; overflow: hidden;
+    background: #222;
+    box-shadow:
+      0 0 0 calc(var(--lv) * 10px) rgba(255, 224, 160, calc(var(--lv) * .55)),
+      0 0 calc(24px + var(--lv) * 110px) calc(var(--lv) * 38px) rgba(255, 196, 110, calc(var(--lv) * .75)),
+      0 10px 50px rgba(0,0,0,.6); }
+  #picture img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #status { font-size: clamp(16px, 2.4vw, 20px); opacity: .9; min-height: 1.3em; text-align: center; margin-top: 18px; }
+  #middle { display: flex; flex-direction: column; align-items: center; }
+
+  #big { width: 112px; height: 112px; border-radius: 50%; border: 0; color: white; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; box-shadow: 0 6px 24px rgba(0,0,0,.5); touch-action: manipulation; }
+  #big svg { width: 52px; height: 52px; fill: currentColor; }
+  #big.call { background: var(--green); }
+  #big.hang { background: var(--red); }
+  #big .ic-x { display: none; }                  /* during a call: a white X on red instead of the handset */
+  #big.hang .ic-call { display: none; }
+  #big.hang .ic-x { display: block; }
+  #big:active { transform: scale(.96); }
+
+  /* grown-ups: a small button in the corner opens the bar, so the kids see only Santa and the call button */
+  #adultBtn { position: fixed; left: 14px; bottom: 14px; z-index: 3; width: 40px; height: 40px; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,.25); background: rgba(0,0,0,.35); color: #fff; cursor: pointer; padding: 0;
+    display: flex; align-items: center; justify-content: center; opacity: .7; }
+  #adultBtn:hover, #adultBtn.open { opacity: 1; }
+  #adultBtn svg { width: 20px; height: 20px; fill: currentColor; }
+  #adult { position: fixed; left: 14px; right: 14px; bottom: 64px; z-index: 3; background: var(--panel);
+    border: 1px solid rgba(255,255,255,.12); border-radius: 12px; padding: 10px 14px; color: #fff;
+    display: none; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+  #adult.open { display: flex; }
+  #adult .label { margin-right: 6px; }
+  #adult button { background: #2a2e38; color: #fff; border: 1px solid #3a3f4b; border-radius: 6px;
+    padding: 5px 10px; font-size: 13px; cursor: pointer; }
+  #adult button.on { background: #3d5afe; border-color: #3d5afe; }
+  #adult .spacer { flex: 1; }
+  #note { color: #fff; }
+  #overlay { position: fixed; top: 10px; right: 10px; z-index: 4; background: rgba(0,0,0,.8); border: 1px solid #333;
+    font: 12px ui-monospace, Menlo, monospace; padding: 8px 10px; border-radius: 8px; white-space: pre;
+    display: none; max-width: 92vw; overflow: auto; }
+</style>
+</head>
+<body data-state="IDLE">
+  <div id="backdrop" aria-hidden="true"></div>
+  <div id="stage">
+    <div id="top">
+      <div id="name">Santa Claus</div>
+      <div id="sub">Call Santa</div>
+    </div>
+    <div id="middle">
+      <div id="avatar">
+        <span class="ring"></span><span class="ring"></span><span class="ring"></span>
+        <div id="picture"><img src="/santa-image" alt="Santa"></div>
+      </div>
+      <div id="status"></div>
+    </div>
+    <button id="big" class="call" aria-label="Call Santa"><svg class="ic-call" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg><svg class="ic-x" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6 18 18M18 6 6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" fill="none"/></svg></button>
+  </div>
+  <button id="adultBtn" title="Grown-ups" aria-label="Grown-ups controls" aria-expanded="false" aria-controls="adult"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-3.3 0-8 1.7-8 5v1h16v-1c0-3.3-4.7-5-8-5z"/></svg></button>
+  <div id="adult" aria-label="Grown-ups only">
+    <span class="label">Grown-ups:</span>
+    <span id="kids"></span>
+    <button id="guest">Guest</button>
+    <button id="forget" title="Forget the facts Santa just remembered about the selected child">Forget last</button>
+    <span id="note"></span>
+    <span class="spacer"></span>
+    <button id="dev" title="Developer timings">Timings</button>
+  </div>
+  <div id="overlay"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

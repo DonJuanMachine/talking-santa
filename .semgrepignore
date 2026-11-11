@@ -1,0 +1,12 @@
+# Keep scans fast and off private/generated data
+.venv/
+.snapshots/
+__pycache__/
+transcripts/
+profiles.json
+profiles.json.*
+santa/web/.cache/
+santa/web/debug_audio/
+tools/probes/out/
+tools/audit/experiments/out/
+evals/backup/

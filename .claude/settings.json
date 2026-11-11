@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./local/**)",
+      "Read(./transcripts/**)",
+      "Read(./profiles.json*)",
+      "Read(./santa/web/debug_audio/**)",
+      "Read(./santa/web/.cache/**)",
+      "Read(./.env*)",
+      "Read(./.snapshots/**)"
+    ]
+  }
+}

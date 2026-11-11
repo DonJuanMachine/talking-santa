@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "talking-santa"
+version = "0.1.0"
+description = "A local, private talking Santa for small children: typed chat and a voice call page, running entirely on one Mac."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+dependencies = [
+    "openai>=1.50",          # talks to the local Docker Model Runner (OpenAI-compatible API)
+]
+
+[project.optional-dependencies]
+# Phase 2: the voice call page (python -m santa.web). Apple Silicon only (mlx-whisper).
+web = [
+    "fastapi",
+    "uvicorn[standard]",
+    "websockets",
+    "numpy",
+    "onnxruntime",
+    "psutil",
+    "soundfile",
+    "mlx-whisper; sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "kokoro-onnx",
+]
+dev = [
+    "pytest",
+    "hypothesis",
+    "httpx",
+]
+
+[tool.setuptools.packages.find]
+include = ["santa*"]
+
+[tool.setuptools.package-data]
+"santa.web" = ["static/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

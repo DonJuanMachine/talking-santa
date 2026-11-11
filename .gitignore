@@ -1,0 +1,66 @@
+# ---------------------------------------------------------------- Python tooling
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.hypothesis/
+.coverage
+htmlcov/
+*.egg-info/
+build/
+dist/
+
+# ---------------------------------------------------------------- Secrets / env
+.env
+.env.*
+!.env.example
+# Your personal files: settings + PIN, Santa's picture, children's profiles, certificates (see local.example/)
+/local/
+# Older locations, still ignored in case a copy is left there
+/certs/
+*.local.sh
+
+# ---------------------------------------------------------------- Private runtime data (children's profiles, transcripts)
+# Never commit. Profiles now live in local/profiles.json; these are the older spots.
+/profiles.json
+/profiles.json.*
+/transcripts/
+
+# ---------------------------------------------------------------- Voice app (santa/web)
+santa/web/.cache/
+santa/web/debug_audio/
+# Older spot for your own Santa picture (now local/santa.jpg): never committed
+santa/web/static/santa.jpg
+
+# ---------------------------------------------------------------- Generated artifacts
+# Probe/test outputs (WAV audition kits, live-run logs, measurements): local only.
+tools/**/out/
+tests/**/out/
+evals/report.md
+evals/backup/
+*.wav
+*.mp3
+
+# VulnHunter scan results (may contain exploit PoCs): local only
+*_VULNHUNT_RESULTS_*/
+
+# Per-stage measurements kept local (live-run numbers)
+docs/history/STAGE_H.md
+
+# ---------------------------------------------------------------- Downloaded models
+*.onnx
+*.gguf
+*.safetensors
+voices-*.bin
+models/
+
+# ---------------------------------------------------------------- Local tooling / scratch
+.snapshots/
+.claude/settings.local.json
+.idea/
+.vscode/
+notes/
+.DS_Store

@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Blocks commits that contain secrets (gitleaks, staged changes only).
+# Emergency bypass (use sparingly): SKIP_GITLEAKS=1 git commit ...
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+
+[ "${SKIP_GITLEAKS:-}" = "1" ] && { echo "WARNING: gitleaks skipped (SKIP_GITLEAKS=1)"; exit 0; }
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "gitleaks not found - install with: brew install gitleaks" >&2
+  echo "Refusing to commit without a secrets scan (bypass: SKIP_GITLEAKS=1)." >&2
+  exit 1
+fi
+
+if ! gitleaks protect --staged --redact --no-banner --verbose; then
+  echo >&2
+  echo "Commit blocked: possible secret in staged changes." >&2
+  echo "If real: remove it AND rotate/revoke the credential. If a false positive:" >&2
+  echo "add its fingerprint to .gitleaksignore (printed above as 'Fingerprint')." >&2
+  exit 1
+fi

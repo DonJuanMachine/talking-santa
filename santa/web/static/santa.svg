@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <!-- Placeholder Santa (drawn for this project). Put your own picture at santa/web/static/santa.jpg to replace it. -->
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="70%">
+      <stop offset="0" stop-color="#3b5d8f"/><stop offset="1" stop-color="#14213a"/>
+    </radialGradient>
+  </defs>
+  <rect width="400" height="400" fill="url(#bg)"/>
+  <g fill="#fff" opacity=".7">
+    <circle cx="40" cy="60" r="3"/><circle cx="350" cy="40" r="4"/><circle cx="300" cy="120" r="2.5"/>
+    <circle cx="70" cy="200" r="2.5"/><circle cx="360" cy="230" r="3"/><circle cx="25" cy="320" r="3.5"/>
+  </g>
+  <path d="M60 400 Q70 300 200 290 Q330 300 340 400 Z" fill="#c62828"/>
+  <path d="M150 300 L200 400 L250 300 Z" fill="#f5f5f5" opacity=".0"/>
+  <path d="M95 215 Q90 330 200 360 Q310 330 305 215 Q290 260 200 262 Q110 260 95 215 Z" fill="#f7f7f7"/>
+  <ellipse cx="200" cy="200" rx="88" ry="92" fill="#f6c9a6"/>
+  <path d="M112 150 Q120 60 220 58 Q300 62 320 150 Z" fill="#c62828"/>
+  <path d="M220 58 Q300 50 330 120" stroke="#c62828" stroke-width="34" fill="none" stroke-linecap="round"/>
+  <circle cx="338" cy="132" r="22" fill="#fafafa"/>
+  <rect x="100" y="138" width="214" height="34" rx="17" fill="#fafafa"/>
+  <ellipse cx="168" cy="200" rx="9" ry="11" fill="#2b2b2b"/>
+  <ellipse cx="232" cy="200" rx="9" ry="11" fill="#2b2b2b"/>
+  <circle cx="171" cy="196" r="3" fill="#fff"/><circle cx="235" cy="196" r="3" fill="#fff"/>
+  <path d="M150 182 Q168 172 186 182" stroke="#e8e8e8" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <path d="M214 182 Q232 172 250 182" stroke="#e8e8e8" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <circle cx="148" cy="232" r="16" fill="#f19c9c" opacity=".6"/>
+  <circle cx="252" cy="232" r="16" fill="#f19c9c" opacity=".6"/>
+  <ellipse cx="200" cy="226" rx="17" ry="14" fill="#e98f7a"/>
+  <path d="M140 255 Q170 240 200 252 Q230 240 260 255 Q235 275 200 266 Q165 275 140 255 Z" fill="#fafafa"/>
+  <path d="M185 272 Q200 285 215 272" stroke="#8a3b3b" stroke-width="5" fill="none" stroke-linecap="round"/>
+</svg>

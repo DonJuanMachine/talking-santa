@@ -1,0 +1,30 @@
+{
+  "children": {
+    "Emma": {
+      "age": 4,
+      "nicknames": [
+        "Mimi",
+        "Ems"
+      ],
+      "family": {
+        "mom": "Mommy",
+        "dad": "Daddy",
+        "grandmother": [
+          "Nana",
+          "Granny Fern"
+        ],
+        "grandfather": "Pop"
+      },
+      "facts": [
+        "likes snow angels",
+        "wants a drawing pad"
+      ]
+    },
+    "Leo": {
+      "age": 3,
+      "facts": [
+        "likes to build with blocks"
+      ]
+    }
+  }
+}
