@@ -252,7 +252,8 @@ def _only_sounds(inner: str) -> bool:
 
 def _drop_standalone(seg: str) -> str:
     """Delete a *span* / (span) that stands alone between sentences ("Ho ho! *nibbles* Yes!"), unless it is only
-    sound words ("*Jingle jingle!*"). A span inside a sentence is emphasis and is kept (unwrapped later)."""
+    sound words ("*Jingle jingle!*") or holds a negation ("Santa—*not*—a robot"; deleting it inverts the meaning).
+    A span inside a sentence is emphasis and is kept (unwrapped later)."""
     def repl(m):
         inner = m.group(1) if m.group(1) is not None else m.group(2)
         before = seg[:m.start()].rstrip().rstrip(_CLOSERS + " ")
@@ -261,7 +262,8 @@ def _drop_standalone(seg: str) -> str:
         # starts a new sentence, or is an aside between dashes ("Mittens—*purrs*—she's asleep")
         alone_a = not after or after[0].isupper() or after[0] in "\"“" or \
             (bool(before) and before[-1] in "—–" and after[0] in "—–")
-        if alone_b and alone_a and not _only_sounds(inner):
+        if alone_b and alone_a and not _only_sounds(inner) and \
+                not re.search(r"\b(?:not|never|no|nobody|nothing)\b|n['’]t\b", inner, re.I):
             return " "
         return m.group(0)
     return _SPAN_RE.sub(repl, seg)

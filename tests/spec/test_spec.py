@@ -230,6 +230,38 @@ def test_s8_stand_alone_stage_directions_are_not_spoken(raw, expected):
     assert heard_of(raw) == expected
 
 
+def _heard_streamed(raw, size):
+    gate = speech.Gate(allow_ho=True)
+    for s in speech.sentences_from_stream([raw[i:i + size] for i in range(0, len(raw), size)]):
+        gate.push(s)
+        if gate.stopped:
+            break
+    gate.finish()
+    return gate.text
+
+
+@pytest.mark.parametrize("raw,expected", [
+    # P1-1: a negation in a stand-alone span is kept (it used to be deleted, which inverts the sentence)
+    ("I'm Santa—*not*—a robot, Pip!", "I'm Santa—not—a robot, Pip!"),                        # between em dashes
+    ("Rudolph is – *not* – grumpy today.", "Rudolph is – not – grumpy today."),                # between en dashes
+    ("The snow is—**never**—too cold, Juniper.", "The snow is—never—too cold, Juniper."),
+    ("The elves—*didn't*—forget you, Pip.", "The elves—didn't—forget you, Pip."),
+    ("Is the sleigh too fast? *Not at all!*", "Is the sleigh too fast? Not at all!"),          # whole sentence
+    ("Are the elves upset with you? *No way!*", "Are the elves upset with you? No way!"),
+    ("The cocoa spilled. *Not* Wren's fault at all!", "The cocoa spilled. Not Wren's fault at all!"),  # before a capital
+    ("You're—(not)—in trouble, Juniper.", "You're—not—in trouble, Juniper."),                 # parentheses
+    ("Is the dark scary? (Never!)", "Is the dark scary? Never!"),
+    ("The cocoa spilled. (Nobody is cross, Wren!)", "The cocoa spilled. Nobody is cross, Wren!"),
+    # already right before the fix: must not change
+    ("I'm Santa—*not* a robot, Pip!", "I'm Santa—not a robot, Pip!"),
+    ("Yum! *nibbles a cookie* Thank you, Juniper!", "Yum! Thank you, Juniper!"),
+    ("(waves happily) Hello, Wren!", "Hello, Wren!"),
+])
+@pytest.mark.parametrize("size", [None, 1, 3])
+def test_s8_negation_in_a_stand_alone_span_is_kept(raw, expected, size):
+    assert (heard_of(raw) if size is None else _heard_streamed(raw, size)) == expected
+
+
 @pytest.mark.parametrize("raw,expected", [
     ("The reindeer just gave a little *jingle jingle* sound.", "The reindeer just gave a little jingle jingle sound."),
     ("My sleigh goes *whoosh* in the sky!", "My sleigh goes whoosh in the sky!"),
@@ -254,9 +286,18 @@ def test_s8_no_known_gap_cases():
 S8_EMPHASIS_NOT_STAGE = {"Whoa, Ziv! My real name is... *Santa Claus*—and I’ve got a big, jolly secret!"}
 
 
+def _spoken_stand_alone_spans(raw, heard):
+    """The spans that make Q.classify tag "art_stage" (same condition)."""
+    hw = Q.W(heard)
+    return [inner for inner in Q.standalone_spans(raw) if (iw := Q.W(inner)) and not spec._is_direction(inner)
+            and Q.contains_run(hw, iw) and not all(w in spec.SOUNDS for w in iw)]
+
+
 def test_s8_golden_corpus_has_no_spoken_stand_alone_stage_direction():
+    """A stand-alone span that holds a negation is spoken on purpose (P1-1: deleting it can invert the reply)."""
     spoken_stage = [(r["raw"], h) for r, h in GOLD if "art_stage" in Q.classify(r["raw"], r["child"], h)
-                    and not any(r["raw"].startswith(x) for x in S8_EMPHASIS_NOT_STAGE)]
+                    and not any(r["raw"].startswith(x) for x in S8_EMPHASIS_NOT_STAGE)
+                    and not all(Q.NEG.search(s) for s in _spoken_stand_alone_spans(r["raw"], h))]
     assert not spoken_stage, spoken_stage[:5]
 
 
