@@ -1,5 +1,9 @@
 # Talking Santa
 
+<img src="docs/images/santa-public-domain.jpg" width="320" alt="Vintage illustration of Santa carrying a bell and a white kitten">
+
+Artwork: public domain.
+
 Local, private talking Santa for small kids. LLM served by Docker Model Runner; nothing leaves the Mac.
 
 ```
