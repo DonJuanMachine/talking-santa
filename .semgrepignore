@@ -10,3 +10,11 @@ santa/web/debug_audio/
 tools/probes/out/
 tools/audit/experiments/out/
 evals/backup/
+local/
+notes/
+.env
+.env.*
+*_VULNHUNT_RESULTS_*/
+certs/
+tests/**/out/
+tools/**/out/
