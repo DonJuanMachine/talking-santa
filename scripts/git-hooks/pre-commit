@@ -1,20 +1,126 @@
 #!/usr/bin/env bash
-# Blocks commits that contain secrets (gitleaks, staged changes only).
-# Emergency bypass (use sparingly): SKIP_GITLEAKS=1 git commit ...
+# Pre-commit checks, all on the staged changes:
+#   1. private paths   : refuses files that must never be committed (profiles, transcripts, notes/, keys, ...),
+#                        even when added with `git add -f`.
+#   2. personal data   : refuses ADDED lines that contain a word from the owner's private term files. It prints the
+#                        file, the new-file line number and which term file matched. Never the text or the term.
+#   3. secrets         : gitleaks, staged changes only.
+# SKIP_GITLEAKS=1 skips only check 3 (use sparingly). Checks 1 and 2 have no bypass.
+#
+# Term files (one fixed string per line, whole-word match; contributors without them just skip check 2):
+#   ${SANTA_PII_TERMS:-$HOME/.santa-pii-terms.txt}        case-insensitive
+#   ${SANTA_PII_TERMS_CS:-$HOME/.santa-pii-terms-cs.txt}  case-sensitive (names that are also ordinary words)
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
-[ "${SKIP_GITLEAKS:-}" = "1" ] && { echo "WARNING: gitleaks skipped (SKIP_GITLEAKS=1)"; exit 0; }
+fail=0
+TMP="$(mktemp -d "${TMPDIR:-/tmp}/santa-precommit.XXXXXX")" || exit 1
+trap 'rm -rf "$TMP"' EXIT
 
-if ! command -v gitleaks >/dev/null 2>&1; then
+# ------------------------------------------------------------------ 1. private paths
+# Matched at any depth and case-insensitively (the default macOS volume ignores case).
+private_rule() {
+  local p="/$1"
+  shopt -s nocasematch
+  case "$p" in
+    */profiles.json*)            echo 'profiles.json*' ;;
+    */local/*)                   echo 'local/' ;;
+    */transcripts/*)             echo 'transcripts/' ;;
+    */.env.example)              return 1 ;;
+    */.env*)                     echo '.env*' ;;
+    */santa.env)                 echo 'santa.env' ;;
+    */debug_audio/*)             echo 'debug_audio/' ;;
+    */.snapshots/*)              echo '.snapshots/' ;;
+    */notes/*)                   echo 'notes/' ;;
+    */santa/web/.cache/*)        echo 'santa/web/.cache/' ;;
+    */evals/backup/*)            echo 'evals/backup/' ;;
+    */tools/out/*|*/tools/*/out/*) echo 'tools/**/out/' ;;
+    *.pem)                       echo '*.pem' ;;
+    *.key)                       echo '*.key' ;;
+    *.p12)                       echo '*.p12' ;;
+    *)
+      case "${p%/*}" in
+        *_VULNHUNT_RESULTS_*)    echo '*_VULNHUNT_RESULTS_*/' ;;
+        *)                       return 1 ;;
+      esac ;;
+  esac
+}
+
+while IFS= read -r -d '' path; do
+  if rule="$(private_rule "$path")"; then
+    echo "BLOCKED (private path): $path (rule: $rule)" >&2
+    fail=1
+  fi
+done < <(git -c core.quotepath=false diff --cached --name-only --diff-filter=ACMR -z)
+
+# ------------------------------------------------------------------ 2. personal data on added lines
+CI_FILE="${SANTA_PII_TERMS:-$HOME/.santa-pii-terms.txt}"
+CS_FILE="${SANTA_PII_TERMS_CS:-$HOME/.santa-pii-terms-cs.txt}"
+
+check_terms() {  # $1=label (ci|cs)  $2=term file  $3=grep flags
+  local label="$1" file="$2" flags="$3"
+  if [ ! -e "$file" ]; then
+    echo "note: personal-data term file not found ($file); $label check skipped" >&2
+    return 0
+  fi
+  if [ ! -r "$file" ] || [ ! -f "$file" ]; then
+    echo "BLOCKED (personal data): term file is not a readable file: $file" >&2
+    fail=1; return 0
+  fi
+  if grep -q '^[[:space:]]*$' "$file"; then
+    echo "BLOCKED (personal data): term file has an empty or whitespace-only line, which would match every line: $file" >&2
+    fail=1; return 0
+  fi
+  [ -s "$file" ] || return 0
+  [ -s "$TMP/added" ] || return 0
+  # shellcheck disable=SC2086
+  grep -n $flags -F -f "$file" "$TMP/added" 2>/dev/null | cut -d: -f1 > "$TMP/hits"
+  local rc=${PIPESTATUS[0]}
+  if [ "$rc" -gt 1 ]; then
+    echo "BLOCKED (personal data): could not scan with $file" >&2
+    fail=1; return 0
+  fi
+  [ -s "$TMP/hits" ] || return 0
+  # map each matching added-line number back to "file:line" (the text itself is never printed)
+  awk -v label="$label" 'NR==FNR { hit[$1]=1; next } (FNR in hit) { print "BLOCKED (personal data): " $0 " matches a " label " term" }' \
+    "$TMP/hits" "$TMP/where" >&2
+  fail=1
+}
+
+# Added lines only: $TMP/added holds the text, $TMP/where the matching "file:new-line-number" (same line numbers).
+git -c core.quotepath=false diff --cached -U0 --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ \
+  | awk -v added="$TMP/added" -v where="$TMP/where" '
+      /^diff --git / { inhunk = 0; file = ""; next }
+      !inhunk && /^\+\+\+ / { f = substr($0, 5); sub(/^b\//, "", f); sub(/\t.*$/, "", f); file = f; next }
+      /^@@ / {
+        inhunk = 1
+        if (match($0, /\+[0-9]+/)) n = substr($0, RSTART + 1, RLENGTH - 1) + 0
+        next
+      }
+      inhunk && /^\+/ { print substr($0, 2) > added; print file ":" n > where; n++; next }
+      END { close(added); close(where) }
+    '
+: >> "$TMP/added"; : >> "$TMP/where"
+
+check_terms ci "$CI_FILE" "-i -w"
+check_terms cs "$CS_FILE" "-w"
+
+# ------------------------------------------------------------------ 3. secrets
+if [ "${SKIP_GITLEAKS:-}" = "1" ]; then
+  echo "WARNING: gitleaks skipped (SKIP_GITLEAKS=1)"
+elif ! command -v gitleaks >/dev/null 2>&1; then
   echo "gitleaks not found - install with: brew install gitleaks" >&2
   echo "Refusing to commit without a secrets scan (bypass: SKIP_GITLEAKS=1)." >&2
-  exit 1
-fi
-
-if ! gitleaks protect --staged --redact --no-banner --verbose; then
+  fail=1
+elif ! gitleaks protect --staged --redact --no-banner --verbose; then
   echo >&2
   echo "Commit blocked: possible secret in staged changes." >&2
   echo "If real: remove it AND rotate/revoke the credential. If a false positive:" >&2
   echo "add its fingerprint to .gitleaksignore (printed above as 'Fingerprint')." >&2
+  fail=1
+fi
+
+if [ "$fail" -ne 0 ]; then
+  echo "Commit blocked by the pre-commit checks above." >&2
   exit 1
 fi
+exit 0
