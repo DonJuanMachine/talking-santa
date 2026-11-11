@@ -15,12 +15,16 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 sys.dont_write_bytecode = True
 _TMP = Path(tempfile.mkdtemp(prefix="santa-spec-"))
-os.environ.setdefault("SANTA_PROFILES", str(_TMP / "profiles.json"))
+# plain assignment: an exported SANTA_PROFILES / SANTA_LOCAL_DIR must never be kept (P6-8)
+os.environ["SANTA_PROFILES"] = str(_TMP / "profiles.json")
+os.environ["SANTA_LOCAL_DIR"] = str(_TMP / "local")
 os.environ["HYPOTHESIS_STORAGE_DIRECTORY"] = str(_TMP / "hypothesis")
 
 from santa import memory  # noqa: E402
 
-assert memory.load.__defaults__[0] != ROOT / "profiles.json", "would touch the real profiles.json"
+from tests._real_paths import real_profiles_paths  # noqa: E402
+
+assert memory.load.__defaults__[0].resolve() not in real_profiles_paths(), "would touch the real profiles.json"
 
 GOLDEN = [json.loads(line) for line in (Path(__file__).parent / "golden.jsonl").read_text().splitlines()]
 STORED = [r for r in GOLDEN if r["source"].startswith("stored:")]
