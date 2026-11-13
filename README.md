@@ -1,6 +1,6 @@
 # Talking Santa
 
-<img src="docs/images/santa.jpg" width="320" alt="Illustration of Santa carrying a bell and a white kitten">
+<img src="docs/images/call-page.jpg" width="640" alt="The call page: a Santa picture in a circle, the name Santa Claus and a green Call button">
 
 A talking Santa for young children, ages 2 to 5, that runs on one Mac. Speech recognition, the language model and the
 voice all run locally, and an adult should be nearby.
