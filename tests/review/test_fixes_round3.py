@@ -139,10 +139,12 @@ def test_f_i_promise_stays_always_blocked():
 def test_f_gift_word_and_you_within_eight_words_for_i_will_bring():
     # Stage D1: the gift noun AND "you"/"your" must both be within 8 words after the verb; a gift with no
     # recipient is not a promise.
+    # P1-3 part B widened this rule's window to 12 words ("I'll tell my elves to make that whoosh, a big, red truck
+    # just for you"), so the 10th- and 9th-word promises below, which this test used to pin as spoken, are now stopped.
     assert safety.sanitize("I will bring you one great big shiny red new truck!") == safety.FALLBACK    # 8th word
-    assert safety.sanitize("I will bring you one great big shiny red new and fun truck!") != safety.FALLBACK  # 10th
+    assert safety.sanitize("I will bring you one great big shiny red new and fun truck!") == safety.FALLBACK  # 10th
     assert safety.sanitize("I will bring one big red truck for your tree!") == safety.FALLBACK         # your: 6th
-    assert safety.sanitize("I will bring one great big shiny red new truck for your tree!") != safety.FALLBACK  # 9th
+    assert safety.sanitize("I will bring one great big shiny red new truck for your tree!") == safety.FALLBACK  # 9th
     raw = "I will bring one great big shiny red new truck!"                                    # no recipient
     assert safety.sanitize(raw) == raw
 

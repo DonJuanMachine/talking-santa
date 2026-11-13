@@ -260,7 +260,9 @@ class Santa:
             self.warm_up()
 
         legacy = safety.legacy()
-        gate = speech.Gate(allow_ho=not self.ho_once or cues.sings_or_jokes(text), names=self._names(speaker))
+        # child_turn: the child's own words (never the label or the gift-ask note), for the gift-turn rules (P1-3 part B)
+        gate = speech.Gate(allow_ho=not self.ho_once or cues.sings_or_jokes(text), names=self._names(speaker),
+                           child_turn=text)
         seg = speech.Segmenter()
         t0 = time.perf_counter()
         first = first_sentence = None

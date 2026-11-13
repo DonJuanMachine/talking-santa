@@ -83,7 +83,8 @@ def _recipient_rules(rec: str, for_whom: str, poss: str, direct: str) -> list[st
     """The promise shapes that need a recipient. rec: a recipient anywhere in the next 8 words ("you"/"your");
     for_whom: who "for ..." names ("you"); poss: the possessive ("your"); direct: right after the verb ("you"/"your")."""
     return [
-        _WILL_VERB + _within(8, _GIFT_RX) + _within(8, rec),
+        # P1-3 part B: 12 words, not 8 ("I'll tell my elves to make that whoosh, a big, red truck just for you")
+        _WILL_VERB + _within(12, _GIFT_RX) + _within(12, rec),
         _NOW_VERB + _within(8, _GIFT_RX) + _within(8, rec),
         _MAKING + r"(?:\s+(?:" + direct + r")" + _within(8, _GIFT_RX) + r"|" + _within(8, _GIFT_RX)
         + _within(8, r"for\s+(?:" + for_whom + r")") + r")",
@@ -254,9 +255,10 @@ def looks_private_fact(text: str) -> bool:
     return looks_private(text) or bool(_LASTNAME_RE.search(text))
 
 
-def safety_reason(text: str, names=()) -> str | None:
+def safety_reason(text: str, names=(), gift_turn: bool = False) -> str | None:
     """Why `text` must not be spoken: "naughty_list" | "promise" | "ai_identity" | "blocklist" | "private" | None.
-    names: the active child's name and nicknames (P1-3: "I'll bring Emma a bike!" is a promise like "you")."""
+    names: the active child's name and nicknames (P1-3: "I'll bring Emma a bike!" is a promise like "you").
+    gift_turn: the child just asked for a gift (speech.is_gift_turn), so the pronoun rules apply too (P1-3 part B)."""
     for name, rx in _SAFETY_RE:
         if rx.search(text):
             return name
@@ -264,7 +266,78 @@ def safety_reason(text: str, names=()) -> str | None:
             nrx = _name_promise_re(tuple(names))
             if nrx is not None and nrx.search(text):
                 return name
+        if name == "promise" and gift_turn and gift_turn_promise(text):
+            return name
     return "private" if looks_private(text) else None
+
+
+# ----------------------------------------------------------------- P1-3 part B: after the child asked for a gift
+# The child's request ("Can I have a pony?") makes Santa's pronoun the gift: "I'll bring it!", "Yes! You'll find it
+# under the tree!". These rules apply only on a gift turn (speech.is_gift_turn) and never on a question sentence
+# ("What would you like Santa to bring you?").
+# Trigger (b): a request shape, or a gift noun, in the child's words (gifts.talks_gifts is checked by the caller).
+GIFT_REQUEST_RE = re.compile(
+    r"\b(?:(?:can|could|may)\s+i\s+(?:please\s+)?(?:have|get)"
+    r"|(?:will|can|could|would)\s+you\s+(?:please\s+)?(?:bring|give|get)\s+me"
+    r"|i\s+(?:really\s+)?(?:want|need|wish))\b"
+    r"|\b" + _GIFT_RX, re.I)
+_B_SUBJ = r"\b(?:i|we|santa|(?:my|the)\s+elves)"
+_B_MODAL = (r"(?:\s+will|['’]ll|\s+shall|\s+can(?!['’]t)|\s+could"
+            r"|(?:\s+(?:am|is|are)|['’](?:m|s|re))?\s+(?:going\s+to|gonna))")
+_PRONOUN = r"(?:it|that|this|one|them|those|these)(?![\w'’])"
+_B_AFFIRM = _AFFIRM + r"[\s,!.]+(?:and\s+)?"
+_GIFT_TURN_RULES = [
+    # B1 pronoun object: "I'll bring it!", "Yes, I'll bring you one!", "I'll put one in your stocking!".
+    # "make it" + another word is not a gift ("I'll make it snow!"); "I'll make it for you!" is.
+    _B_SUBJ + _B_MODAL + _BETWEEN + r"[\s,]+(?:make\s+(?:you\s+)?(?!it\s+(?!for\b|just\b)[^\W\d_])|(?!make\b)"
+    + _GIFT_VERB + r"\s+(?:you\s+)?)" + _PRONOUN,
+    # B1 you-subject: "Yes! You'll find it under the tree!", "I wrote it down, and you'll get it!"
+    r"\byou(?:['’]ll|\s+will|\s+can(?!['’]t)|['’]re\s+(?:going\s+to|gonna)|\s+are\s+(?:going\s+to|gonna))"
+    r"\s+(?:get|have|find|receive|see|open)\s+" + _PRONOUN,
+    # B2 bare commitment: "Yes, I will!", "Yes, you can!"
+    _B_AFFIRM + r"(?:i|you|we|santa)(?:\s+(?:will|can|shall)|['’]ll)(?=\s*(?:[.!…]+(?:\s|$)|$))",
+    # B3 affirmative + commitment verb + gift noun: "Of course! I'll bring a pony!"
+    _B_AFFIRM + r"(?:" + _B_SUBJ.removeprefix(r"\b") + _B_MODAL + _BETWEEN + r"|" + _ELVES_TO.removeprefix(r"\b")
+    + r")[\s,]+" + _GIFT_VERB + r"\b" + _within(8, _GIFT_RX),
+]
+_GIFT_TURN_RE = re.compile("|".join(_GIFT_TURN_RULES), re.IGNORECASE)
+_SENT_END = re.compile(r"[.!?…]+")
+
+
+def gift_turn_promise(text: str) -> bool:
+    """A B-rule match whose sentence does not end in "?". A match never crosses . ! ? (except the affirmative's own
+    punctuation in "Yes! I'll bring a pony!"), so its sentence ends at the next run of . ! ? … after it."""
+    pos = 0
+    while (m := _GIFT_TURN_RE.search(text, pos)) is not None:
+        end = _SENT_END.search(text, m.end())
+        if end is None or "?" not in end.group():
+            return True
+        pos = m.start() + 1
+    return False
+
+
+def is_gift_request(child_text) -> bool:
+    """The child's words hold a request shape or a gift noun (trigger (b), together with gifts.talks_gifts)."""
+    return bool(child_text) and GIFT_REQUEST_RE.search(str(child_text).replace("’", "'")) is not None
+
+
+# A sentence that is only an affirmative ("Yes!", "Of course!", "Ho ho ho, okay!", "Oh, sure!"): on a gift turn it is
+# held until the next sentence shows whether it goes with a promise.
+_YES = r"(?:yes|yeah|yep|okay|ok|sure|of\s+course|absolutely)"
+
+
+@functools.lru_cache(maxsize=64)
+def _bare_affirm_named_re(names: tuple[str, ...]) -> "re.Pattern":
+    """Built on first use: _INTERJECTION (the opener words) is defined further down."""
+    alts = sorted({n.strip() for n in names if isinstance(n, str) and re.search(r"[^\W\d_]", n)}, key=len, reverse=True)
+    vocative = r"(?:[\s,]+(?:" + "|".join(re.escape(a) for a in alts) + r"))?" if alts else ""
+    return re.compile(r"\W*(?:" + _INTERJECTION + r"[\s,!.…-]+)*" + _YES + r"(?:[\s,!.…-]+" + _YES + r")*"
+                      + vocative + r"\W*", re.I)
+
+
+def is_bare_affirmative(sentence: str, names=()) -> bool:
+    """Only an affirmative, optionally after an interjection opener and before the child's name ("Yes, Emma!")."""
+    return bool(_bare_affirm_named_re(tuple(names or ())).fullmatch(sentence.strip()))
 
 
 # =============================================================================================== cleaning

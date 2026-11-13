@@ -138,3 +138,5 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
   stage direction that contains a negation word (for example "no" or "not") is now spoken, because the negation stays
   with its span instead of being cut out of it. Rare, since stage directions are normally stripped. Revisit if one is
   ever heard.
+- Gift-promise detection for pronoun answers ("I'll bring it!") depends on recognizing the child's request, so a
+  request in an unusual wording may not trigger the pronoun rules.
