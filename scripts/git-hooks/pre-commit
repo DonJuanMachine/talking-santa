@@ -6,6 +6,11 @@
 #                        file, the new-file line number and which term file matched. Never the text or the term.
 #   3. secrets         : gitleaks, staged changes only.
 # SKIP_GITLEAKS=1 skips only check 3 (use sparingly). Checks 1 and 2 have no bypass.
+# Known gaps (a pre-commit hook cannot or does not look here):
+#   - binary files, and files that attributes mark binary or -diff, are not scanned for terms (git shows no text lines)
+#   - a term only in the commit message (a commit-msg hook would be needed)
+#   - a term only in a file name or directory name
+#   - git commit --no-verify skips every check
 #
 # Term files (one fixed string per line, whole-word match; contributors without them just skip check 2):
 #   ${SANTA_PII_TERMS:-$HOME/.santa-pii-terms.txt}        case-insensitive
@@ -37,6 +42,13 @@ private_rule() {
     *.pem)                       echo '*.pem' ;;
     *.key)                       echo '*.key' ;;
     *.p12)                       echo '*.p12' ;;
+    *.m4a)                       echo '*.m4a' ;;
+    *.wav)                       echo '*.wav' ;;
+    *.mp3)                       echo '*.mp3' ;;
+    *.log)                       echo '*.log' ;;
+    *.sqlite)                    echo '*.sqlite' ;;
+    *.db)                        echo '*.db' ;;
+    */certs/*)                   echo 'certs/' ;;
     *)
       case "${p%/*}" in
         *_VULNHUNT_RESULTS_*)    echo '*_VULNHUNT_RESULTS_*/' ;;
@@ -50,7 +62,7 @@ while IFS= read -r -d '' path; do
     echo "BLOCKED (private path): $path (rule: $rule)" >&2
     fail=1
   fi
-done < <(git -c core.quotepath=false diff --cached --name-only --diff-filter=ACMR -z)
+done < <(git -c core.quotepath=false diff --cached --no-renames --name-only --diff-filter=ACMR -z)
 
 # ------------------------------------------------------------------ 2. personal data on added lines
 CI_FILE="${SANTA_PII_TERMS:-$HOME/.santa-pii-terms.txt}"
@@ -73,7 +85,7 @@ check_terms() {  # $1=label (ci|cs)  $2=term file  $3=grep flags
   [ -s "$file" ] || return 0
   [ -s "$TMP/added" ] || return 0
   # shellcheck disable=SC2086
-  grep -n $flags -F -f "$file" "$TMP/added" 2>/dev/null | cut -d: -f1 > "$TMP/hits"
+  grep -n $flags -F -f "$file" "$TMP/scan" 2>/dev/null | cut -d: -f1 > "$TMP/hits"
   local rc=${PIPESTATUS[0]}
   if [ "$rc" -gt 1 ]; then
     echo "BLOCKED (personal data): could not scan with $file" >&2
@@ -87,7 +99,7 @@ check_terms() {  # $1=label (ci|cs)  $2=term file  $3=grep flags
 }
 
 # Added lines only: $TMP/added holds the text, $TMP/where the matching "file:new-line-number" (same line numbers).
-git -c core.quotepath=false diff --cached -U0 --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ \
+git -c core.quotepath=false diff --cached --no-renames -U0 --no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/ \
   | awk -v added="$TMP/added" -v where="$TMP/where" '
       /^diff --git / { inhunk = 0; file = ""; next }
       !inhunk && /^\+\+\+ / { f = substr($0, 5); sub(/^b\//, "", f); sub(/\t.*$/, "", f); file = f; next }
@@ -100,6 +112,9 @@ git -c core.quotepath=false diff --cached -U0 --no-color --no-ext-diff --no-text
       END { close(added); close(where) }
     '
 : >> "$TMP/added"; : >> "$TMP/where"
+# Scan a copy where the two-character JSON escapes \n \r \t (backslash + letter) become a space, so a term right after
+# one is still a whole word. sed works line by line, so the line count and numbering stay the same as $TMP/where.
+sed 's/\\[nrt]/ /g' "$TMP/added" > "$TMP/scan"
 
 check_terms ci "$CI_FILE" "-i -w"
 check_terms cs "$CS_FILE" "-w"

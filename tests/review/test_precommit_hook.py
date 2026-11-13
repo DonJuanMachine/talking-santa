@@ -123,6 +123,14 @@ BLOCKED = [
     ("a.pem", "*.pem"),
     ("certs/server.key", "*.key"),
     ("a/b/c.p12", "*.p12"),
+    ("rec/x.m4a", "*.m4a"),
+    ("a/b/X.WAV", "*.wav"),
+    ("clip.mp3", "*.mp3"),
+    ("run.log", "*.log"),
+    ("a/x.sqlite", "*.sqlite"),
+    ("d/e/x.DB", "*.db"),
+    ("certs/a.txt", "certs/"),
+    ("a/b/Certs/c.txt", "certs/"),
 ]
 
 ALLOWED = [
@@ -134,6 +142,11 @@ ALLOWED = [
     "docs/notes.md",
     "tools/probes/outline.md",
     "santa/web/cache/x.py",
+    "docs/dialog.md",
+    "santa/db.py",
+    "docs/log.md",
+    "certsx/a.txt",
+    "docs/certs.md",
 ]
 
 
@@ -182,6 +195,21 @@ def test_a_renamed_in_private_path_is_blocked(repo):
     assert r.returncode != 0 and "notes/ok.txt" in r.stdout + r.stderr
 
 
+def test_a_tracked_private_file_moved_to_an_allowed_path_is_blocked(repo):
+    """P10b-2: a pure rename has no added lines, so the move must count as a full add."""
+    repo.write("notes/k.md", f"some line\nthe name {NAME_CI} here\nmore text\n")
+    repo.git("add", "-f", "notes/k.md")
+    repo.commit_unhooked("planted")
+    (repo.dir / "docs").mkdir()
+    repo.git("mv", "notes/k.md", "docs/k.md")
+    r = repo.git("commit", "-q", "-m", "mv", check=False)
+    out = r.stdout + r.stderr
+    assert r.returncode != 0, out
+    assert "docs/k.md:2" in out and "ci" in out, out
+    assert NAME_CI not in out.lower(), "the hook printed the matching text"
+    assert repo.git("rev-list", "--count", "HEAD").stdout.strip() == "2"
+
+
 # ------------------------------------------------------------------------------------- (b) personal data
 def test_added_line_with_ci_term_is_blocked_case_insensitively_and_value_is_not_printed(repo):
     repo.write("a.txt", f"fine\nHello {NAME_CI.upper()} there\n")
@@ -206,6 +234,26 @@ def test_cs_file_blocks_title_case_but_lets_the_lowercase_word_through(repo):
     assert rc != 0
     assert "bad.txt:3" in out and "cs" in out
     assert NAME_CS.lower() not in out.lower(), "the hook printed the matching text"
+
+
+@pytest.mark.parametrize("esc", ["\\n", "\\r", "\\t"])
+@pytest.mark.parametrize("which", ["ci", "cs"])
+def test_term_right_after_a_json_escape_is_blocked(repo, which, esc):
+    """P10b-3: the letter of a literal backslash-n/r/t escape must not hide the following word."""
+    name = NAME_CI if which == "ci" else NAME_CS
+    repo.write("a.json", '{"ok":1}\n{"t":"hi' + esc + name + '"}\n')
+    rc, out = repo.commit("a.json")
+    assert rc != 0, out
+    assert "a.json:2" in out and which in out, out
+    assert name.lower() not in out.lower(), "the hook printed the matching text"
+
+
+@pytest.mark.parametrize("name", [NAME_CI, NAME_CS])
+def test_letters_n_r_t_before_a_term_in_an_ordinary_word_still_do_not_match(repo, name):
+    """The escape fix must not turn the whole-word rule into a substring rule."""
+    repo.write("a.txt", f"in{name} or r{name} and t{name} and n{name}x\n")
+    rc, out = repo.commit("a.txt")
+    assert rc == 0, out
 
 
 def test_line_number_is_the_new_file_line_number(repo):
