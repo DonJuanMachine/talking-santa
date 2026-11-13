@@ -16,6 +16,16 @@
   const utt = new Map();             // id -> {next, sources:Set, ended, startedSent}
   let ring = null;
 
+  // Liveness (liveness.js): during a call the server ticks every 2.5 s. No message at all for LOST_MS means the
+  // connection is dead: end the call here, tell the grown-up, connect again. The note stays until the next Call.
+  const LOST_TEXT = "Lost connection to Santa";
+  const RECONNECT_MS = 1000;
+  let lostNote = null;
+  const watchdog = SantaLiveness.makeWatchdog({
+    inCall: () => ws !== null && ws.readyState === 1 && state !== "IDLE",   // a closed socket reconnects on its own
+    onLost: connectionLost,
+  });
+
   // ---------------------------------------------------------------- WebSocket
   function connect() {
     ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`);
@@ -27,9 +37,21 @@
       if (ev.code === 1013) {                                  // too many Santa pages open
         setStatus("Too many Santa pages are open. Close one."); setTimeout(connect, 5000); return;
       }
-      setStatus("Reconnecting…"); setTimeout(connect, 1000);
+      setStatus(lostNote || "Reconnecting…"); setTimeout(connect, RECONNECT_MS);
     };
-    ws.onmessage = (ev) => (typeof ev.data === "string" ? onJson(JSON.parse(ev.data)) : onAudio(ev.data));
+    ws.onmessage = (ev) => {
+      watchdog.seen();                                         // any message, text or audio, is a sign of life
+      typeof ev.data === "string" ? onJson(JSON.parse(ev.data)) : onAudio(ev.data);
+    };
+  }
+  function connectionLost() {
+    const dead = ws;
+    ws = null;                                                 // send() and the mic stop using it at once
+    if (dead) { dead.onopen = dead.onclose = dead.onmessage = null; try { dead.close(); } catch (e) {} }
+    stopAll(); stopRing(true); stopMic();
+    state = "IDLE"; lostNote = LOST_TEXT;
+    render();
+    setTimeout(connect, RECONNECT_MS);
   }
   function send(o) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
   function setStatus(t) { statusEl.textContent = t; }
@@ -38,6 +60,7 @@
     switch (m.type) {
       case "state":
         state = m.state; active = m.active; children = m.children || [];
+        if (state !== "IDLE") lostNote = null;
         render();
         if (state === "IDLE") stopMic();
         break;
@@ -211,6 +234,7 @@
   // ---------------------------------------------------------------- buttons
   big.onclick = async () => {
     if (state === "IDLE") {
+      lostNote = null;
       if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
       await ctx.resume();
       try { await startMic(); } catch (e) { stopMic(); setStatus(micError(e)); return; }
@@ -241,7 +265,7 @@
     const answered = !(state in SUB);           // GREETING, LISTENING, THINKING, SPEAKING
     if (answered && callStart === null) callStart = Date.now();
     if (!answered) { callStart = null; subEl.textContent = SUB[state]; } else clock();
-    setStatus(LABEL[state] || "");
+    setStatus(LABEL[state] || (state === "IDLE" && lostNote) || "");
     const inCall = state !== "IDLE";
     big.className = inCall ? "hang" : "call";   // CSS swaps the icon: handset on green, X on red
     big.setAttribute("aria-label", inCall ? "Hang up" : "Call Santa");
@@ -266,4 +290,5 @@
   }
 
   connect();
+  watchdog.start();
 })();

@@ -84,6 +84,9 @@ class Settings:
     silence_prompt_s: float = _f("SANTA_SILENCE_S", 45)
     keepalive_s: float = _f("SANTA_KEEPALIVE_S", 100)              # 90 to 120 s, only while no call is active
     playback_grace_s: float = 3.0                 # if the browser never reports playback_ended
+    # liveness: during a call the page gets {"type": "tick"} this often (0 = off). The page treats LOST_MS
+    # (static/liveness.js, 6 s) without any message as a dead connection, so keep this well under half of that.
+    tick_s: float = _f("SANTA_TICK_S", 2.5)
 
     # personal (local/, gitignored): Santa's picture
     santa_image: Path | None = field(default_factory=local.santa_image)

@@ -8,6 +8,8 @@ WebSocket protocol (JSON text messages + binary audio):
                      | {"type": "audio_start", "id", "sr"} + binary (uint32 id + int16 PCM at sr) + {"type": "audio_end", "id"}
                      | {"type": "metrics", ...numbers} | {"type": "forgot", "child", "count"}
                      | {"type": "busy"} (another page is already on a call: one call at a time)
+                     | {"type": "tick"} (every settings.tick_s during a call, never while idle: the page's liveness
+                       signal; app.js resets to IDLE after liveness.js LOST_MS without any message)
   close code 4401: this device has not entered the PIN (the page reloads to the PIN screen)
   close code 1013: too many call pages are open (MAX_SESSIONS); the page retries a little later
 """

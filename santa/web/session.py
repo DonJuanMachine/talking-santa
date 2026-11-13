@@ -98,6 +98,7 @@ class CallSession:
         self.last_voice = clock()
         self.silence_stage = 0
         self.silence_task: asyncio.Task | None = None
+        self.tick_task: asyncio.Task | None = None
         self.metrics: list[dict] = []
         self.counters = {"calls": 0, "turns": 0, "say_again": 0, "dropped_short": 0, "extend_fired": 0,
                          "fallbacks": 0, "silence_prompts": 0, "silence_hangups": 0, "forget_presses": 0,
@@ -243,6 +244,7 @@ class CallSession:
         self._run(self.w.brain, self.brain.new_call)
         self.silence_stage = 0
         await self.set_state(State.RINGING)
+        self._start_ticks()
         self._start_flow(self._ring_and_greet(epoch))
 
     async def _ring_and_greet(self, epoch: int) -> None:
@@ -334,6 +336,23 @@ class CallSession:
                     self.counters["silence_hangups"] += 1
                     await self.hangup(reason="silence")
                     return
+        except asyncio.CancelledError:
+            pass
+
+    # ------------------------------------------------------------------------------------- liveness
+    def _start_ticks(self) -> None:
+        if self.s.tick_s > 0 and (self.tick_task is None or self.tick_task.done()):
+            self.tick_task = asyncio.ensure_future(self._ticks())
+
+    async def _ticks(self) -> None:
+        """During a call (any state but IDLE), a tiny message every tick_s, so the page can tell a dead connection
+        from a quiet one. Ends when the call is back to IDLE; the next Call starts it again."""
+        try:
+            while not self.closed:
+                await asyncio.sleep(self.s.tick_s)
+                if self.state == State.IDLE:
+                    return
+                await self.send({"type": "tick"})
         except asyncio.CancelledError:
             pass
 
@@ -503,7 +522,7 @@ class CallSession:
         self.epoch += 1
         if self.cancel_event is not None:
             self.cancel_event.set()
-        for t in (self.flow, self.silence_task):
+        for t in (self.flow, self.silence_task, self.tick_task):
             if t is not None and not t.done():
                 t.cancel()
         self.closed = True
