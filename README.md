@@ -1,6 +1,6 @@
 # Talking Santa
 
-<img src="docs/images/santa-public-domain.jpg" width="320" alt="Illustration of Santa carrying a bell and a white kitten">
+<img src="docs/images/santa.jpg" width="320" alt="Illustration of Santa carrying a bell and a white kitten">
 
 A talking Santa for young children, ages 2 to 5, that runs on one Mac. Speech recognition, the language model and the
 voice all run locally, and an adult should be nearby.
@@ -74,7 +74,7 @@ python scripts/check_model.py
 
 ```bash
 scripts/start-santa.sh              # this Mac only: http://127.0.0.1:8765
-scripts/start-santa.sh --network    # home Wi-Fi too (see "Use on your home network")
+scripts/start-santa.sh --network    # other devices on your network too (see "Use on your home network")
 scripts/stop-santa.sh               # stops Santa, frees the model's memory
 ```
 
@@ -199,6 +199,8 @@ a router DNS entry), add it to `local/santa.env`: `SANTA_ALLOWED_HOSTS=santa.hom
 Everything here is optional. **Restart Santa after editing anything in `local/`** (settings, profiles, backstory,
 picture): those files are read once, when Santa starts (`scripts/stop-santa.sh`, then `scripts/start-santa.sh`). The
 page files under `santa/web/static/` only need a browser reload; Python changes need a restart.
+
+**Settings.** Every setting, with its default and effect, is listed in [docs/configuration.md](docs/configuration.md).
 
 **Your personal files go in `local/`.** Git ignores that folder, so your settings, PIN, picture, children's profiles
 and certificates are never committed; the code only knows the file names. Template and details:
@@ -381,7 +383,7 @@ Layout:
   experiments behind the reviews)
 - `scripts/` - `start-santa.sh`, `stop-santa.sh`, `run-web.sh`, `check_model.py` (smoke test), `install-git-hooks.sh` +
   `git-hooks/` (pre-commit hook), `security-scan.sh`
-- `docs/` - `architecture.md`, `model-selection.md` (why Gemma 4 e4b: benchmark method, data, results); `docs/history/` -
+- `docs/` - `architecture.md` (how it fits together, with diagrams), `configuration.md` (every setting), `model-selection.md` (why Gemma 4 e4b: benchmark method, data, results); `docs/history/` -
   design notes, audit and review write-ups. `CHANGELOG.md` - what changed. `SECURITY.md` - security policy and model.
   `CONTRIBUTING.md` - how to report bugs and contribute
 - `local.example/` - template for your personal `local/` folder
