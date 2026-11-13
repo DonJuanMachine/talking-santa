@@ -292,7 +292,7 @@
     overlay.textContent = "seconds from end of speech (T_end)\n  stt   tok  sent   tts  play | wait total\n" +
       lastMetrics.map((x) => `${f(x.stt_done_from_end)} ${f(x.first_token_from_end)} ${f(x.first_sentence_from_end)} ` +
         `${f(x.first_tts_from_end)} ${f(x.first_played_from_end)} | ${f(x.endpoint_wait)} ${f(x.total_from_last)}` +
-        `${x.extended ? " ext" : ""}${x.say_again ? " again" : ""}${x.fallback ? " fb" : ""}`).join("\n");
+        `${x.extended ? " ext" : ""}${x.say_again ? " again" : ""}${x.fallback ? " fb" : ""}${x.safety_tail ? " stop" : ""}`).join("\n");
   }
 
   connect();

@@ -24,6 +24,7 @@ from . import canned
 class ReplyInfo:
     sentences: int = 0
     fallback: bool = False
+    safety_tail: bool = False            # FALLBACK followed spoken sentences after a SAFETY stop (P1-2)
     reason: str | None = None
     cancelled: bool = False
     ttft: float | None = None            # brain's own number (from its request start)
@@ -156,6 +157,7 @@ class SantaBrain:
         r = self.santa.last_reply
         info.cancelled = info.cancelled or turn.cancel.is_set()
         info.fallback, info.reason, info.ttft = r.fallback, r.reason, r.ttft
+        info.safety_tail = r.safety_tail
         info.first_token_at = turn.first_token_at
         return info
 

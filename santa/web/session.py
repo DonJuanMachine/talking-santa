@@ -480,7 +480,8 @@ class CallSession:
             info = fut.result()
             if info.first_token_at is not None:
                 m["first_token"] = info.first_token_at
-            m.update(fallback=info.fallback, reason=info.reason, sentences=info.sentences)
+            # safety_tail: a boolean only (P1-2: a SAFETY stop after Santa had started speaking); never text
+            m.update(fallback=info.fallback, safety_tail=info.safety_tail, reason=info.reason, sentences=info.sentences)
             if info.fallback:
                 self.counters["fallbacks"] += 1
             if not started:          # nothing speakable came out (cannot happen: the brain yields FALLBACK)

@@ -429,7 +429,8 @@ def test_s13_every_fallback_path_sets_reply_reason(raw, reason, mode, monkeypatc
 def test_s13_partial_stop_and_mid_stream_error_set_reason_but_keep_what_was_said():
     s = make_santa(["Hi Emma! I am ChatGPT! Bye."])
     r = s.reply_ex("Emma", "hi")
-    assert r.text == "Hi Emma!" and r.reason == "blocklist:ai_identity" and not r.fallback and s.last_error is None
+    assert r.text == "Hi Emma! " + FB and r.reason == "blocklist:ai_identity" and not r.fallback and s.last_error is None
+    assert r.spoken == ["Hi Emma!"] and r.safety_tail          # P1-2: FALLBACK follows a SAFETY stop
     s = brain.Santa(model="fake", client=BreakingClient([MidStreamError("Hi Emma! You are so kind, and")]),
                     profiles={"Emma": {"facts": []}})
     s.last_ok_time = brain._now()

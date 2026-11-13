@@ -147,7 +147,8 @@ def _santa(reply, monkeypatch, tmp_path):
 @pytest.mark.parametrize("reply", ["Hello there! I'll bring Juniper a bike!", "Hello there! Wren's getting a puppy!"])
 def test_p1_3a_brain_passes_the_active_childs_name_and_nicknames(reply, monkeypatch, tmp_path):
     s = _santa(reply, monkeypatch, tmp_path)
-    assert s.reply("Juniper", "hi santa") == "Hello there!"
+    assert s.reply("Juniper", "hi santa") == "Hello there! " + FB    # P1-2: FALLBACK follows a SAFETY stop
+    assert s.last_reply.spoken == ["Hello there!"] and s.last_reply.safety_tail
     assert s.last_reply.reason == "blocklist:promise"      # the Reply code for a promise stop (brain._reason_code)
 
 

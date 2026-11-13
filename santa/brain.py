@@ -37,12 +37,16 @@ def _now() -> float:
 @dataclass
 class Reply:
     """One turn. text = what the child hears (FALLBACK when nothing could be spoken).
+    spoken: the gate's sentences the child heard, in order (never FALLBACK).
+    safety_tail: a SAFETY rule stopped the reply after `spoken`, so FALLBACK was said after them (P1-2); then
+      text = spoken + FALLBACK.
     reason: None for a complete normal reply; otherwise why speech stopped early or fell back:
       "model_error" | "empty_stream" | "nothing_left_after_filter" | "blocklist:<rule>" | "private_output" | "too_long"
     error: the model/transport error message, if any. shape: spec.shape_flags(raw) (measured, not enforced)."""
     text: str
     raw: str = ""
     spoken: list[str] = field(default_factory=list)
+    safety_tail: bool = False
     reason: str | None = None
     error: str | None = None
     shape: list[str] = field(default_factory=list)
@@ -63,6 +67,12 @@ def _reason_code(gate_reason: str | None) -> str | None:
     if gate_reason == "too_long":
         return "too_long"
     return f"blocklist:{gate_reason}"
+
+
+def _safety_stop(gate: speech.Gate) -> bool:
+    """The gate stopped on a SAFETY rule (a spec.safety_reason hit). Not the length cap (reason None) and not a first
+    sentence over MAX_WORDS ("too_long"): those are limits, not safety stops (P1-2)."""
+    return gate.stopped and gate.reason not in (None, "too_long")
 
 
 _LEGACY_WHY = {"empty": "nothing_left_after_filter", "blocklist": "blocklist", "private_output": "private_output",
@@ -233,7 +243,8 @@ class Santa:
 
     # -- generation ---------------------------------------------------------
     def reply_stream(self, speaker: str | None, text: str) -> Iterator[str]:
-        """Yield what Santa says, sentence by sentence (FALLBACK as the only item if nothing can be said).
+        """Yield what Santa says, sentence by sentence (FALLBACK as the only item if nothing can be said, or as the last
+        one after a SAFETY stop that followed spoken sentences, P1-2).
         Exactly one model call (plus a warm-up when the model may have been unloaded, unless a warm-up failed less
         than config.WARMUP_RETRY_SECONDS ago). At the end self.last_reply
         holds the Reply; history and log are updated even if the caller stops iterating early."""
@@ -270,6 +281,10 @@ class Santa:
         chunks = 0
         error = None
         said: list[str] = []          # model sentences the child heard, in order (FALLBACK is not one)
+        # P1-2: a SAFETY stop after spoken sentences would leave the child with a cut-off prefix (the reassurance or
+        # the "tell your grown-up" sentence is often the one stopped). FALLBACK follows at once, as one more sentence,
+        # through the same door as the nothing-was-said FALLBACK below. At most once; never with the legacy filter.
+        tail = False
         try:
             try:
                 stream = self.client.chat.completions.create(
@@ -292,6 +307,9 @@ class Santa:
                                 first_sentence = first_sentence or time.perf_counter() - t0
                                 said.append(out)
                                 yield out
+                    if said and not tail and _safety_stop(gate):
+                        tail = True       # said now, not when the model finishes: no added wait
+                        yield safety.FALLBACK
                 self.last_ok_time = _now()  # the model answered (a later filter fallback is not a model problem)
             except GeneratorExit:
                 raise
@@ -314,6 +332,9 @@ class Santa:
                             first_sentence = first_sentence or time.perf_counter() - t0
                             said.append(out)
                             yield out
+                if said and not tail and _safety_stop(gate):
+                    tail = True
+                    yield safety.FALLBACK
             if not legacy:
                 for out in gate.finish():
                     first_sentence = first_sentence or time.perf_counter() - t0
@@ -333,8 +354,8 @@ class Santa:
                 reason = None if spoken else _LEGACY_WHY.get(safety.sanitize_ex(raw)[1], "nothing_left_after_filter")
             else:
                 reason = _reason_code(gate.reason) or (None if spoken else "nothing_left_after_filter")
-            answer = " ".join(spoken) if spoken else safety.FALLBACK
-            rep = Reply(text=answer, raw=raw, spoken=spoken, reason=reason, error=error,
+            answer = " ".join(spoken + [safety.FALLBACK] if tail else spoken) if spoken else safety.FALLBACK
+            rep = Reply(text=answer, raw=raw, spoken=spoken, safety_tail=tail, reason=reason, error=error,
                         shape=spec.shape_flags(raw), ttft=first or 0.0, first_sentence_s=first_sentence or 0.0,
                         total=time.perf_counter() - t0)
             self.last_reply = rep
@@ -345,13 +366,16 @@ class Santa:
             self._end_turn(speaker, text, label, start, answer, spoken)
 
     def _end_turn(self, speaker, text, label, start, answer, spoken) -> None:
-        """History, the per-child trackers and the log, after every turn (model reply or song)."""
+        """History, the per-child trackers and the log, after every turn (model reply or song).
+        History and log get `answer`, everything the child heard (with a P1-2 FALLBACK tail); the arc and gift trackers
+        get only the model's spoken sentences (the tail's question is not Santa asking about the wish)."""
         self.history += [{"role": "user", "content": label}, {"role": "assistant", "content": answer}]
         self._start = start
+        content = " ".join(spoken)
         if self.arc is not None and spoken and speaker and speaker in self.profiles:
-            self.arc.advance(speaker, answer)   # only what was actually spoken (never on FALLBACK)
+            self.arc.advance(speaker, content)   # only what was actually spoken (never on FALLBACK)
         if self.gifts is not None and spoken:
-            self.gifts.advance(self._gift_key(speaker), text, answer)
+            self.gifts.advance(self._gift_key(speaker), text, content)
         if self.gentle_on and spoken:
             k = self._child_key(self._gift_key(speaker))
             self._gentle[k] = persona.GENTLE_TURNS if cues.sounds_sad(text) else max(0, self._gentle.get(k, 0) - 1)
