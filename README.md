@@ -317,6 +317,7 @@ Numbers are the defaults in the code.
 | Situation | What happens | Numbers |
 |---|---|---|
 | The model hangs or errors | Santa says the fixed fallback line; no retry | request timeout 15 s (`SANTA_TIMEOUT`) |
+| A safety rule stops an answer after Santa has started speaking | Santa ends with the fixed fallback line, which asks the child to tell a grown-up | - |
 | The model may have been unloaded | Santa warms it up first if the last good answer is older than 300 s, unless a warm-up failed less than 90 s ago | warm-up timeout 90 s |
 | The answer is slow | After 10 s with no first sentence Santa says "Hmm, let me think about that." (at most once per 60 s in a call); the page shows "taking a while" | `SANTA_SLOW_S` 10, `SANTA_HOLD_EVERY_S` 60 |
 | Hang up while waiting | No request is sent if the model has not been asked yet; a running answer stops at the next chunk | - |

@@ -125,7 +125,8 @@ three turns (`santa/arc.py` constants).
   sentences after an optional opening laugh), and it stops at a sentence boundary. A first sentence over 45 words cannot
   be cut, so Santa says the fallback line.
 - The filter only removes text. It adds nothing except a fixed fallback line ("Santa is listening. Can you tell your
-  grown-up too?") when nothing safe is left. It also removes a repeated "Ho ho" and turns markup characters into spaces
+  grown-up too?") when nothing safe is left, or after the sentences already spoken when a SAFETY rule stops a reply
+  partway (not when the length cap stops it), so the child is never left with only a cut-off start. It also removes a repeated "Ho ho" and turns markup characters into spaces
   before the voice.
 - Only text that passed the speech filter, or a fixed line checked against the same rules, reaches the voice
   (`santa/web/safe.py`).

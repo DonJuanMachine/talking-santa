@@ -6,6 +6,13 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
 
 ## [Unreleased]
 
+### Child-safety fixes (review)
+- When a safety rule stops an answer after Santa has already said part of it, Santa now ends with the fixed fallback
+  line (which asks the child to tell a grown-up) instead of stopping on a cut-off start. Said right at the stop, at
+  most once; not for the length cap or `SANTA_FILTER=legacy`. History holds what the child heard. The Timings overlay
+  shows `stop` on such a turn (a yes/no flag only). In the stored replies, 4 of 1056 answers change this way; no other
+  answer changes. Code: `santa/brain.py`, `santa/web/`; tests: `tests/spec/test_p1_2_safety_tail.py`.
+
 ### Security and privacy fixes (docs claims check)
 - Starting the call page with `python -m santa.web` is now offline by default: the speech-model loader no longer looks
   anything up on huggingface.co at startup, and Hugging Face telemetry is off. A value set in your shell or in
