@@ -148,6 +148,25 @@ def remove_backup(path: Path = config.PROFILES_PATH) -> None:
             pass
 
 
+def remove_transcripts(directory: Path | None = None) -> int:
+    """Used by /forget in chat.py: delete the typed-chat transcripts (*.txt, this folder only). Returns how many were
+    removed; a missing folder is not an error."""
+    directory = Path(directory if directory is not None else config.TRANSCRIPT_DIR)
+    removed = 0
+    try:
+        files = sorted(directory.glob("*.txt"))
+    except OSError:
+        return 0
+    for p in files:
+        try:
+            if p.is_file() or p.is_symlink():
+                p.unlink()
+                removed += 1
+        except OSError:
+            pass
+    return removed
+
+
 def aliases(profiles: dict) -> dict[str, str]:
     """{nickname: child name} for every registered nickname. A nickname that is also a child's real name, or that
     two children share, is dropped (it would be ambiguous)."""

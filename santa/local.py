@@ -7,7 +7,7 @@ Default location: `local/` in the repo (gitignored). Set SANTA_LOCAL_DIR to keep
       santa_world.txt Santa's backstory: home, wife, reindeer, elves (replaces the built-in one)
       santa.jpg       Santa's picture on the call page (.jpg, .jpeg, .png or .webp)
       profiles.json   the children Santa knows (names, ages, remembered facts)
-      transcripts/    chat.py transcripts (only if you turn them on)
+      transcripts/    chat.py saves a transcript here whenever a typed session had at least one reply; /forget deletes them
       certs/          HTTPS certificate + key for `python -m santa.web --network`
 
 The code in git only knows these file names. A missing file falls back to the project default (the drawn Santa,

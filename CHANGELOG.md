@@ -15,6 +15,10 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
   apostrophes) made matching time double with every word, so one such reply could stall Santa for minutes. The word
   patterns now have a single reading; every verdict is unchanged (checked on the stored replies, the test sentences and
   a few hundred thousand generated ones). Code: `santa/spec.py`; tests: `tests/spec/test_regex_timing.py`.
+- Typed chat: `/forget` now also deletes the saved transcripts in `local/transcripts/` (`*.txt` only) and drops the
+  current session's text so it is not saved when you quit; it prints how many files were removed. The comment in
+  `santa/local.py` wrongly said transcripts were optional: `chat.py` saves one whenever a session had a reply.
+  Code: `chat.py`, `santa/memory.py`; tests: `tests/spec/test_forget_transcripts.py`.
 
 ### Memory
 - Santa's backstory: fixed home, Mrs. Claus, reindeer and elves in the system prompt (`persona.WORLD_DEFAULT`),

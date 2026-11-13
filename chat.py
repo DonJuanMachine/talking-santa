@@ -5,7 +5,7 @@
     Emma: hi santa, I have a cat named Mittens
     Leo: i want a truck
     /who        show remembered facts
-    /forget     wipe all memory
+    /forget     wipe all memory, the backups and the saved transcripts
     /quit
 """
 import sys
@@ -51,7 +51,9 @@ def main() -> None:
             santa.profiles.clear()
             memory.save(santa.profiles)
             memory.remove_backup()
-            print("  (memory wiped)")
+            santa.log.clear()   # this session's text so far must not be saved as a transcript at quit
+            removed = memory.remove_transcripts()
+            print(f"  (memory wiped; {removed} transcript file{'' if removed == 1 else 's'} removed)")
             continue
         if line == "/add" or line.startswith("/add "):
             name = santa.add_child(line[4:])
