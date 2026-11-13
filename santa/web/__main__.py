@@ -4,13 +4,22 @@ By default binds to 127.0.0.1: open http://127.0.0.1:8765 in Chrome or Safari on
 --network: other devices on the home Wi-Fi can call too, over HTTPS (mkcert files in local/certs/) and only after
 entering the PIN (SANTA_PIN, usually set in local/santa.env). See README > "Use on your home network".
 """
-import argparse
-import logging
 import os
-import sys
-import socket
-import subprocess
-from pathlib import Path
+
+# Offline by default: this must come before anything can import huggingface_hub or mlx_whisper, which read these
+# variables once, at import. Without it the speech-model loader looks up its model on huggingface.co at startup.
+# setdefault: a value the owner exports in the shell wins, and main() lets local/santa.env set them too.
+_HF_DEFAULTS = {"HF_HUB_OFFLINE": "1", "HF_HUB_DISABLE_TELEMETRY": "1"}
+_HF_FROM_DEFAULT = [k for k in _HF_DEFAULTS if k not in os.environ]   # not set by the shell
+for _k, _v in _HF_DEFAULTS.items():
+    os.environ.setdefault(_k, _v)
+
+import argparse  # noqa: E402
+import logging  # noqa: E402
+import sys  # noqa: E402
+import socket  # noqa: E402
+import subprocess  # noqa: E402
+from pathlib import Path  # noqa: E402
 
 sys.dont_write_bytecode = True
 
@@ -37,8 +46,18 @@ def _lan_names() -> list[str]:
     return out
 
 
+def load_settings_env() -> None:
+    """Read local/santa.env (e.g. SANTA_PIN) into the environment. The shell wins over the file, and the file wins over
+    the offline defaults above: they are taken away while the file is read and put back for whatever it left unset."""
+    for k in _HF_FROM_DEFAULT:
+        os.environ.pop(k, None)
+    local.load_env()
+    for k, v in _HF_DEFAULTS.items():
+        os.environ.setdefault(k, v)
+
+
 def main(argv=None) -> None:
-    local.load_env()      # local/santa.env (e.g. SANTA_PIN) before any setting is read
+    load_settings_env()   # local/santa.env before any setting is read
     from santa import persona
     persona.use_world(local.santa_world())   # local/santa_world.txt, if you wrote one
     ap = argparse.ArgumentParser(prog="python -m santa.web")

@@ -6,6 +6,12 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
 
 ## [Unreleased]
 
+### Security and privacy fixes (docs claims check)
+- Starting the call page with `python -m santa.web` is now offline by default: the speech-model loader no longer looks
+  anything up on huggingface.co at startup, and Hugging Face telemetry is off. A value set in your shell or in
+  `local/santa.env` still wins (`HF_HUB_OFFLINE=0`). `scripts/run-web.sh` already did this. Code: `santa/web/__main__.py`;
+  tests: `tests/spec/test_offline_default.py`.
+
 ### Memory
 - Santa's backstory: fixed home, Mrs. Claus, reindeer and elves in the system prompt (`persona.WORLD_DEFAULT`),
   replaceable with `local/santa_world.txt`.
