@@ -9,7 +9,8 @@ local/
   santa_world.txt Santa's backstory (optional): replaces the built-in North Pole, Mrs. Claus, reindeer and elves
   santa.jpg       Santa's picture (.jpg, .jpeg, .png or .webp; square, e.g. 800x800)
   profiles.json   your children's names, ages and facts   <- copy from profiles.example.json, or /add in chat.py
-  transcripts/    chat.py transcripts, if you turn them on
+  transcripts/    chat.py saves a transcript of each typed session here; /forget in chat.py deletes them
+  run/            the log and process id that scripts/start-santa.sh writes
   certs/          santa.pem + santa-key.pem for --network (made with mkcert, see README)
 ```
 
@@ -31,6 +32,8 @@ SANTA'S WORLD (these facts never change; always answer the same way)
 ```
 
 Every file is optional: without it, the app uses its default (the drawn Santa, no children, no PIN).
+
+Restart Santa after editing anything in `local/`: these files are read once, when Santa starts.
 
 To keep the folder outside the repo (for example in iCloud Drive), set `SANTA_LOCAL_DIR=/path/to/folder` in your
 shell. The code in git only knows the file names above (`santa/local.py`).

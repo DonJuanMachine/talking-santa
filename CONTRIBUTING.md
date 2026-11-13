@@ -4,7 +4,7 @@ Thanks for your interest in Talking Santa! Bug reports, ideas and pull requests 
 
 ## Ways to help
 
-- **Found a bug?** Open an [issue](../../issues). Say what you did, what you expected and what happened. Include
+- **Found a bug?** Open an [issue](https://github.com/DonJuanMachine/talking-santa/issues). Say what you did, what you expected and what happened. Include
   your macOS version, browser, and the model you used (`SANTA_MODEL`).
 - **Have an idea or a question?** Open an issue whose title starts with "Idea:" or "Question:".
 - **Found a security problem?** Do **not** open a public issue. Report it privately, as described in
@@ -17,18 +17,22 @@ made-up names such as Emma, Leo and Ziv, as the tests do.
 
 ## Development setup
 
-Requires macOS (Apple silicon for the voice app), Python 3.12+, and Docker Desktop with Model Runner.
+Requires macOS (Apple silicon for the voice app), Python 3.12+, and Docker Desktop with Model Runner. Tested on Apple M5,
+32 GB, macOS 27.0.1 and Python 3.12.13; other versions are untested.
 
 ```bash
-python3.12 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"            # add ",web" to run the voice app; see README for the model downloads
-bash scripts/install-git-hooks.sh  # gitleaks pre-commit hook: blocks commits that contain secrets
+python3.12 -m venv ~/.venvs/talking-santa-h && source ~/.venvs/talking-santa-h/bin/activate
+pip install -e ".[web,dev]"        # the voice app and the test tools; the README's "One-time install" has the model downloads
+bash scripts/install-git-hooks.sh  # pre-commit hook: blocks commits that contain private files or secrets
 mkdir -p local                     # your personal files (gitignored); template in local.example/
 ```
 
+The hook can be skipped with `git commit --no-verify`.
+
 ## Before you open a pull request
 
-- [ ] `pytest` passes. It takes about 25 s and needs no model server: the tests use fakes.
+- [ ] `pytest` passes. It takes about a minute and needs no model server: the tests use fakes. Node.js is optional (two
+      test files also run JavaScript tests when it is installed).
 - [ ] New behaviour has a test. Every bug fix gets a test that would have caught it.
 - [ ] Nothing personal is committed. `local/`, `profiles.json`, certificates and audio are gitignored; keep it that
       way.
@@ -42,9 +46,9 @@ not be merged:
 
 - **Nothing leaves the Mac at runtime.**
   - No cloud APIs, analytics or telemetry.
-  - Network access is allowed only for one-time model downloads during setup.
-- **Child safety comes first.** Everything Santa says goes through the safety gate in `santa/spec.py`.
-  - The gate only removes text; it never rewrites it.
+  - Network access is allowed only for downloads during setup. The entry point keeps the speech-model loader offline.
+- **Child safety comes first.** Everything Santa says is checked before it is spoken; the rules live in `santa/spec.py`.
+  - The filter only removes text; its one addition is a fixed fallback line when nothing safe is left.
   - New rules belong in `spec.py`, with tests.
 - **Safe defaults.**
   - The server listens on `127.0.0.1` unless the user passes `--network`.

@@ -9,7 +9,8 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
 ### Security and privacy fixes (docs claims check)
 - Starting the call page with `python -m santa.web` is now offline by default: the speech-model loader no longer looks
   anything up on huggingface.co at startup, and Hugging Face telemetry is off. A value set in your shell or in
-  `local/santa.env` still wins (`HF_HUB_OFFLINE=0`). `scripts/run-web.sh` already did this. Code: `santa/web/__main__.py`;
+  `local/santa.env` still wins for a direct `python -m santa.web` start (`HF_HUB_OFFLINE=0`). `scripts/run-web.sh` already
+  did this and always runs offline. Code: `santa/web/__main__.py`;
   tests: `tests/spec/test_offline_default.py`.
 - Safety filter speed: one sentence shape (gift-promise phrase followed by many words joined with hyphens or
   apostrophes) made matching time double with every word, so one such reply could stall Santa for minutes. The word
@@ -31,7 +32,7 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
 - Added `python -m santa.web --network`: other devices on the home Wi-Fi can call Santa over HTTPS (mkcert
   certificate in the gitignored `certs/`). The default is unchanged: 127.0.0.1, plain HTTP.
 - Other devices must enter a PIN (`SANTA_PIN`, required to start); this Mac never is. 5 wrong tries lock that device
-  out for 60 s. The unlock cookie is HttpOnly, SameSite=Strict, and stops working when the server restarts.
+  out for 60 s (the lockout grows with repeated failures; see the security fixes below). The unlock cookie is HttpOnly, SameSite=Strict, and stops working when the server restarts.
 - In network mode only one call runs at a time, and `/status` answers only on this Mac.
 - The call page uses `wss://` when served over HTTPS.
 - Security fix (all modes): the WebSocket now refuses pages from other websites (Origin must match Host). Before,
@@ -131,10 +132,10 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
 - Added `santa/web/`: FastAPI call page on 127.0.0.1 with Call / Hang up buttons, a still Santa picture and an
   adult strip (child buttons, Guest, Forget last).
 - Added voice pipeline: AudioWorklet capture, Silero VAD, mlx-whisper small.en, Kokoro v1.0, call state machine.
-- Only the speech gate can reach TTS; no audio or transcripts are written to disk.
-- Phase 3 changed from a USB handset to this web page.
-- 30-minute soak passed (121 turns, 0 errors, no memory growth, model stayed loaded). It found Hang up being held up
-  after Forget last by the busy brain thread; fixed in `santa/web/session.py` (not re-soaked yet).
+- Only the speech gate can reach TTS; the call page writes no audio or transcripts to disk.
+- The planned USB handset was replaced by this web page.
+- A 30-minute test run was done. It found Hang up being held up after Forget last by the busy brain thread; fixed in
+  `santa/web/session.py` (not run again since).
 - Not yet measured: speech recognition on real children's voices; echo with real speakers.
 
 ### Stage G
@@ -142,9 +143,9 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
   wording).
 - Sad facts can still be stored, so Stage H adds an adult "Forget last" control.
 
-### Stages A-F
-- TODO: summarize from `docs/history/STAGE_A.md` through `STAGE_F.md` (single rules file `santa/spec.py`, remove-only
-  streaming speech filter, memory off the critical path, model choice `ai/gemma4:e4b`).
+### Stage A and Stages C-F
+- One rules file (`santa/spec.py`), a remove-only streaming speech filter, memory saved after Santa has spoken, and the
+  model choice `ai/gemma4:e4b`. Detail: `docs/history/STAGE_A.md` and `STAGE_C.md` to `STAGE_F.md`.
 
 ### Known open items
 - Persona issues F5, F7a; stale wish facts F3; F9 wording. (F12a is intended behaviour when the Stage I arc is on.)
