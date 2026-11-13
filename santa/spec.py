@@ -40,9 +40,27 @@ _GIFT_ALT = "|".join(_GIFT_PHRASES + _GIFTS)
 # apostrophes can then be read only one way (as a gap between words), which keeps these patterns fast: an
 # overlap between "gap" and "word" characters made matching time explode on text like "I will bring ------x".
 _GAP_WORD = r"\w+(?:['’-]\w+)*"
+# The same overlap exists between a joiner and a gap in "a-a-a-a": each ' ’ - can be read as joining two letters of ONE
+# word or as the gap between TWO words, and the number of readings doubles with every unit (exponential time on
+# "I will bring a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-x"). The words below are therefore atomic: a word
+# takes every joiner it can, so there is one reading. A gift word may still start right after a joiner ("super-toy"),
+# which the second alternative covers; a joined word counts as one word, as before.
+_WORD_ATOMIC = r"(?>" + _GAP_WORD + r")"
+
+
+def _words_then(k: int, sep: str, target: str) -> str:
+    """At most k words, each after a gap `sep`, then a gap, then `target` (spliced in as written)."""
+    plain = r"(?:" + sep + _WORD_ATOMIC + r"){0," + str(k) + r"}?" + sep + target
+    if k < 1:
+        return plain
+    after_joiner = (r"(?:" + sep + _WORD_ATOMIC + r"){0," + str(k - 1) + r"}?" + sep
+                    + r"\w+(?:['’-]\w+)*?['’-]" + target)
+    return r"(?:" + plain + r"|" + after_joiner + r")"
+
+
 _PROMISE_GIFT = (r"\b(?:i['’]ll bring you|i will bring you|you['’]ll get|you will get|you['’]ll receive|"
                  r"you will receive|i['’]ll make sure you get|i promise)\b"
-                 r"(?:[^\w]+" + _GAP_WORD + r"){0,5}?[^\w]+(?:" + _GIFT_ALT + r")\b")
+                 + _words_then(5, r"[^\w]+", r"(?:" + _GIFT_ALT + r")\b"))
 # D1: a gift promise needs BOTH a specific gift noun (_GIFTS) and a recipient ("you" / "your" as words, not
 # you'll / you're). "I'll give you a big hug!", "The elves will make toys all night long!" and "Santa will bring you
 # something special!" are spoken; "I'll put a dinosaur under your tree!" is not.
@@ -54,7 +72,7 @@ _YOU_RX = r"your?(?![\w'’])"                     # you / your, not you'll / yo
 
 def _within(n: int, target: str) -> str:
     """Lookahead: `target` starts one of the next n words, in the same sentence."""
-    return r"(?=(?:[^\w.!?]+" + _GAP_WORD + r"){0," + str(n - 1) + r"}?[^\w.!?]+" + target + r")"
+    return r"(?=" + _words_then(n - 1, r"[^\w.!?]+", target) + r")"
 
 
 # (a) a future marker or "tell/ask/have my elves (to)", then a gift verb, then a gift noun AND a recipient within the

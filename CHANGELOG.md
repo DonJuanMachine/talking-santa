@@ -11,6 +11,10 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
   anything up on huggingface.co at startup, and Hugging Face telemetry is off. A value set in your shell or in
   `local/santa.env` still wins (`HF_HUB_OFFLINE=0`). `scripts/run-web.sh` already did this. Code: `santa/web/__main__.py`;
   tests: `tests/spec/test_offline_default.py`.
+- Safety filter speed: one sentence shape (gift-promise phrase followed by many words joined with hyphens or
+  apostrophes) made matching time double with every word, so one such reply could stall Santa for minutes. The word
+  patterns now have a single reading; every verdict is unchanged (checked on the stored replies, the test sentences and
+  a few hundred thousand generated ones). Code: `santa/spec.py`; tests: `tests/spec/test_regex_timing.py`.
 
 ### Memory
 - Santa's backstory: fixed home, Mrs. Claus, reindeer and elves in the system prompt (`persona.WORLD_DEFAULT`),
