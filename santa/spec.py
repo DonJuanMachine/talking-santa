@@ -17,6 +17,7 @@ Sentences are found in two steps, both streaming-safe (see split_raw):
      the punctuation).
 So the same sentences come out whether the reply arrives whole or in chunks.
 """
+import functools
 import re
 
 MAX_WORDS = 45
@@ -26,23 +27,28 @@ FALLBACK = "Santa is listening. Can you tell your grown-up too?"
 
 # =============================================================================================== SAFETY rules
 # Kid-gift nouns: a promise is only a *gift* promise when one of these follows within six words.
+# P1-3: common toddler gifts added (as nouns, plus a "doll" stem and three two-word toys). Kept to toy nouns: a word
+# here only counts after a gift verb + a recipient, or in the few fixed shapes below.
 _GIFTS = ("toy toys present presents gift gifts truck trucks pony ponies puppy puppies kitten kittens dinosaur "
-          "dinosaurs rocket rockets bike bikes bicycle doll dolls train trains robot robots ball balls bear teddy "
+          "dinosaurs rocket rockets bike bikes bicycle train trains robot robots ball balls bear teddy "
           "game games lego legos scooter drum guitar tablet phone horse unicorn car cars puzzle puzzles wagon "
-          "sled skateboard kite").split()
+          "sled skateboard kite bunny bunnies kitty kitties doggy doggies barbie barbies book books crayons "
+          "blocks ipad ipads slime").split()
+_GIFT_PHRASES = [r"doll\w*", r"fire\s+(?:engine|truck)s?", r"play\s+kitchens?", r"paw\s+patrol"]
+_GIFT_ALT = "|".join(_GIFT_PHRASES + _GIFTS)
 # A word starts with a letter or digit; ' ’ - only join letters ("teddy-bear", "Santa's"). A run of dashes or
 # apostrophes can then be read only one way (as a gap between words), which keeps these patterns fast: an
 # overlap between "gap" and "word" characters made matching time explode on text like "I will bring ------x".
 _GAP_WORD = r"\w+(?:['’-]\w+)*"
 _PROMISE_GIFT = (r"\b(?:i['’]ll bring you|i will bring you|you['’]ll get|you will get|you['’]ll receive|"
                  r"you will receive|i['’]ll make sure you get|i promise)\b"
-                 r"(?:[^\w]+" + _GAP_WORD + r"){0,5}?[^\w]+(?:" + "|".join(_GIFTS) + r")\b")
+                 r"(?:[^\w]+" + _GAP_WORD + r"){0,5}?[^\w]+(?:" + _GIFT_ALT + r")\b")
 # D1: a gift promise needs BOTH a specific gift noun (_GIFTS) and a recipient ("you" / "your" as words, not
 # you'll / you're). "I'll give you a big hug!", "The elves will make toys all night long!" and "Santa will bring you
 # something special!" are spoken; "I'll put a dinosaur under your tree!" is not.
 # Every window below stays inside one sentence (never crosses . ! ?), because the speech gate checks the sentences
 # said so far joined together ("I'll bring my sleigh! Do you want a truck?" is two harmless sentences).
-_GIFT_RX = r"(?:" + "|".join(_GIFTS) + r")\b"
+_GIFT_RX = r"(?:" + _GIFT_ALT + r")\b"
 _YOU_RX = r"your?(?![\w'’])"                     # you / your, not you'll / you're / yours / yourself
 
 
@@ -51,34 +57,87 @@ def _within(n: int, target: str) -> str:
     return r"(?=(?:[^\w.!?]+" + _GAP_WORD + r"){0," + str(n - 1) + r"}?[^\w.!?]+" + target + r")"
 
 
-# (a) a future marker (one optional word may follow: "I'll also bring") or "tell/ask/have my elves (to)", then a gift
-# verb, then a gift noun AND you/your within the next 8 words, in either order.
-_FUTURE = r"(?:\bwill|['’]ll|\bshall|\bgoing\s+to|\bgonna)"
-_GIFT_VERB = r"(?:bring|give|make|send|get|put|leave|wrap|buy|deliver)"
+# (a) a future marker or "tell/ask/have my elves (to)", then a gift verb, then a gift noun AND a recipient within the
+# next 8 words, in either order. P1-3: "can/could" after I/we/Santa/elves ("I can bring you a bike!", never "can't"),
+# and up to four words between the marker and the verb ("I will definitely, absolutely, for sure bring you a bike!").
+_FUTURE = (r"(?:\bwill|['’]ll|\bshall|\bgoing\s+to|\bgonna"
+           r"|\b(?:i|we|santa|elves|reindeer)\s+(?:can(?!['’]t)|could)\b)")
+_BETWEEN = r"(?:[\s,]+[\w'’-]+){0,4}?"
+_GIFT_VERB = r"(?:bring|give|make|send|get|put|leave|wrap|buy|deliver|surprise|drop)"
 _ELVES_TO = r"\b(?:tell|ask|have)\s+(?:my|the)\s+elves(?:\s+to)?"
-_PROMISE_VERB = (r"(?:" + _FUTURE + r"(?:\s+[\w'’-]+)?|" + _ELVES_TO + r")\s+" + _GIFT_VERB + r"\b"
-                 + _within(8, _GIFT_RX) + _within(8, _YOU_RX))
+_WILL_VERB = r"(?:" + _FUTURE + _BETWEEN + r"|" + _ELVES_TO + r")[\s,]+" + _GIFT_VERB + r"\b"
+# E2: present-progressive and "be sure to / going to" forms ("Santa's bringing you a new train!", "I'll be sure to
+# bring you a doll.").
+_NOW_VERB = r"(?:\b(?:is|are|am)|['’](?:s|re|m))\s+(?:bringing|giving|sending|getting|leaving)\b"
+# P1-3: building / making / wrapping, only with the recipient right after the verb or "for you" ("My elves are building
+# you a train right now!"); "The elves are making cat toys right now - do you think ...?" is not a promise.
+_MAKING = r"(?:\b(?:is|are|am)|['’](?:s|re|m))\s+(?:building|making|wrapping)\b"
+_SURE_VERB = r"\b(?:be\s+sure|going)\s+to\s+(?:bring|give|send|get)\b"
+# P1-3: a gift "under the tree" / "in your stocking"
+_TREE = r"(?:under|beneath|by|next\s+to)\s+(?:the|your)\s+(?:christmas\s+)?tree\b|in\s+your\s+stocking\b"
+_AFFIRM = r"\b(?:yes|yeah|yep|okay|ok|sure|of\s+course|absolutely)\b"
+_NOT_FUN = r"(?!\s+(?:so\s+much\s+|lots\s+of\s+|a\s+lot\s+of\s+)?fun\b)"      # "You can have fun with your truck!"
+
+
+def _recipient_rules(rec: str, for_whom: str, poss: str, direct: str) -> list[str]:
+    """The promise shapes that need a recipient. rec: a recipient anywhere in the next 8 words ("you"/"your");
+    for_whom: who "for ..." names ("you"); poss: the possessive ("your"); direct: right after the verb ("you"/"your")."""
+    return [
+        _WILL_VERB + _within(8, _GIFT_RX) + _within(8, rec),
+        _NOW_VERB + _within(8, _GIFT_RX) + _within(8, rec),
+        _MAKING + r"(?:\s+(?:" + direct + r")" + _within(8, _GIFT_RX) + r"|" + _within(8, _GIFT_RX)
+        + _within(8, r"for\s+(?:" + for_whom + r")") + r")",
+        _SURE_VERB + _within(8, _GIFT_RX) + _within(8, rec),
+        # P1-3 "There will be a puppy under your tree!"
+        r"\bthere(?:['’]ll|\s+will|\s+is\s+going\s+to)\s+be\b" + _within(8, _GIFT_RX) + _within(8, rec),
+        # P1-3 "Your new bike will be under the tree!"
+        r"\b" + poss + r"(?:\s+[\w'’-]+){0,3}?\s+" + _GIFT_RX + r"\s+(?:will|['’]ll|is\s+going\s+to)\s+be\b"
+        r"(?=[^.!?]*?(?:" + _TREE + r"))",
+        # P1-3 two sentences: an affirmative, then a gift for you ("Yes! A pony for you!")
+        _AFFIRM + r"[\s,!.]+(?:an?\s+|the\s+|some\s+|one\s+)?(?:[\w'’-]+\s+){0,3}?" + _GIFT_RX
+        + r"\s+(?:just\s+)?for\s+" + for_whom,
+    ]
+
+
+def _subject_rules(subj_will: str) -> list[str]:
+    """P1-3: the recipient is the subject ("You can have the truck!", "You're gonna get a bike!")."""
+    return [subj_will + r"\s+(?:(?:get|receive|find)\b" + _within(8, _GIFT_RX)
+            + r"|have\b" + _NOT_FUN + _within(4, _GIFT_RX) + r")"]
+
+
 # The _PROMISE_GIFT phrases ("you'll get", "you will receive", ...) already name the recipient: a gift noun within
 # 8 words in the same sentence is enough (so "You will get one great big shiny red new truck!" stays blocked).
 _YOU_GET = (r"\b(?:i['’]ll bring you|i will bring you|you['’]ll get|you will get|you['’]ll receive|"
             r"you will receive|i['’]ll make sure you get)\b" + _within(8, _GIFT_RX))
-# E2: present-progressive and "be sure to / going to" forms, same test as (a): a gift noun AND you/your within the next
-# 8 words of the same sentence ("Santa's bringing you a new train!", "I'll be sure to bring you a doll.").
-_PROMISE_NOW = (r"(?:\b(?:is|are)|['’](?:s|re))\s+(?:bringing|giving|sending|getting|leaving)\b"
-                + _within(8, _GIFT_RX) + _within(8, _YOU_RX))
-_PROMISE_SURE = (r"\b(?:be\s+sure|going)\s+to\s+(?:bring|give|send|get)\b"
-                 + _within(8, _GIFT_RX) + _within(8, _YOU_RX))
-_PROMISE_MORE = [
-    _PROMISE_VERB,
+_YOU_WILL = (r"\byou(?:['’]ll|\s+will|\s+can(?!['’]t)|['’]re\s+(?:going\s+to|gonna)|\s+are\s+(?:going\s+to|gonna))")
+_PROMISE_MORE = _recipient_rules(_YOU_RX, r"you(?![\w'’])", r"your", _YOU_RX) + _subject_rules(_YOU_WILL) + [
     _YOU_GET,
-    _PROMISE_NOW,
-    _PROMISE_SURE,
     r"\byou(?:['’]re|\s+are)\s+(?:getting|going\s+to\s+get)\b" + _within(6, _GIFT_RX),   # (b) "you're getting a bike"
     r"\bpromises?\s+you(?![\w'’])",                                     # (d) "Santa promises you a pony"
     # (c) "wish(es) ... come true" only with a gift noun in the same sentence (after "wish", or before it)
     r"\bwish(?:es)?\b(?=[^.!?]*?\bcome\s+true\b)(?=[^.!?]*?\b" + _GIFT_RX + r")",
     r"\b" + _GIFT_RX + r"[^.!?]*?\bwish(?:es)?\b[^.!?]*?\bcome\s+true\b",
 ]
+
+
+@functools.lru_cache(maxsize=64)
+def _name_promise_re(names: tuple[str, ...]) -> "re.Pattern | None":
+    """P1-3: the active child's name (and nicknames), from the caller, where "you" would be: "I'll bring Emma a bike!",
+    "a bike for Emma", "Emma's tree", "Emma will get a bike!", "Emma's getting a bike!". A name alone (a vocative such
+    as "Emma, the elves will make toys!") is not a recipient."""
+    alts = sorted({n.strip() for n in names if isinstance(n, str) and re.search(r"[^\W\d_]", n)}, key=len, reverse=True)
+    if not alts:
+        return None
+    nm = r"(?<![\w'’-])(?:" + "|".join(re.escape(a) for a in alts) + r")"
+    end = r"(?![\w'’-])"
+    pats = _recipient_rules(r"(?:for|to)\s+" + nm + end + r"|" + nm + r"['’]s\b", nm + end, nm + r"['’]s",
+                            nm + end + r"|" + nm + r"['’]s\b")
+    pats += _subject_rules(nm + r"(?:['’]ll|\s+will|\s+can(?!['’]t)|\s+is\s+(?:going\s+to|gonna)|['’]s\s+(?:going\s+to|gonna))")
+    pats += [nm + r"(?:['’]s|\s+is)\s+getting\b" + _within(6, _GIFT_RX),
+             r"(?:" + _WILL_VERB + r"|" + _NOW_VERB + r")\s+" + nm + end + _within(8, _GIFT_RX)]
+    return re.compile("|".join(pats), re.IGNORECASE)
+
+
 # Santa claiming to BE a brand/model ("I am / I'm / my name is X", "made by X", "X here!"). A mention is fine.
 _BRANDS = r"(?:chatgpt|gpt|openai|anthropic|gemma|gemini|google|mistral|ministral|llama|qwen|deepseek|copilot|alexa|siri)"
 _BRAND_CLAIM = (r"\b(?:i am|i['’]m|my name is|i['’]m called|they call me)\s+(?:an?\s+|the\s+)?" + _BRANDS + r"\b(?!['’]s)"
@@ -195,11 +254,16 @@ def looks_private_fact(text: str) -> bool:
     return looks_private(text) or bool(_LASTNAME_RE.search(text))
 
 
-def safety_reason(text: str) -> str | None:
-    """Why `text` must not be spoken: "naughty_list" | "promise" | "ai_identity" | "blocklist" | "private" | None."""
+def safety_reason(text: str, names=()) -> str | None:
+    """Why `text` must not be spoken: "naughty_list" | "promise" | "ai_identity" | "blocklist" | "private" | None.
+    names: the active child's name and nicknames (P1-3: "I'll bring Emma a bike!" is a promise like "you")."""
     for name, rx in _SAFETY_RE:
         if rx.search(text):
             return name
+        if name == "promise" and names:
+            nrx = _name_promise_re(tuple(names))
+            if nrx is not None and nrx.search(text):
+                return name
     return "private" if looks_private(text) else None
 
 

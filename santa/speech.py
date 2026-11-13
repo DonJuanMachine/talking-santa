@@ -62,8 +62,9 @@ class Gate:
     reason: None, or why speech stopped early: "naughty_list" | "promise" | "ai_identity" | "blocklist" | "private"
     (a SAFETY hit) or "too_long". Reaching the normal cap is not a reason."""
 
-    def __init__(self, allow_ho: bool = True):
+    def __init__(self, allow_ho: bool = True, names=()):
         self.allow_ho = allow_ho       # False: "Ho ho (ho)" is removed (Santa already laughed when he answered)
+        self.names = tuple(names or ())   # the active child's name + nicknames: "I'll bring Emma a bike!" (P1-3)
         self.spoken: list[str] = []
         self.held: list[str] = []      # teasers / number sentences waiting for a following sentence
         self.words = 0
@@ -82,7 +83,7 @@ class Gate:
         if self.stopped or not sentence.strip() or spec.is_bare_action(sentence):
             return []
         pending = self.spoken + self.held
-        hit = spec.safety_reason(" ".join(pending + [sentence]))
+        hit = spec.safety_reason(" ".join(pending + [sentence]), names=self.names)
         if hit:
             self.held = []    # held sentences may be part of the hit (a number split over sentences): never spoken
             return self._stop(hit)
@@ -133,9 +134,9 @@ def speak(sentences: Iterable[str]) -> Iterator[str]:
     yield from gate.finish()
 
 
-def filter_reply(raw: str, allow_ho: bool = True) -> Gate:
+def filter_reply(raw: str, allow_ho: bool = True, names=()) -> Gate:
     """Run a whole reply through the stream pipeline; the Gate holds spoken, text and reasons."""
-    gate = Gate(allow_ho=allow_ho)
+    gate = Gate(allow_ho=allow_ho, names=names)
     for s in sentences_from_stream([raw]):
         gate.push(s)
         if gate.stopped:

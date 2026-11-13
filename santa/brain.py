@@ -194,6 +194,14 @@ class Santa:
                     + [{"role": "user", "content": label + note}])
         return messages, label, safe != text
 
+    def _names(self, speaker: str | None) -> list[str]:
+        """The active child's name and registered nicknames, for the promise rule (P1-3: "I'll bring Emma a bike!")."""
+        if not speaker:
+            return []
+        p = self.profiles.get(speaker)
+        nicks = p.get("nicknames") if isinstance(p, dict) else None
+        return [speaker] + [n for n in (nicks or []) if isinstance(n, str)]
+
     def _gift_key(self, speaker: str | None) -> str | None:
         """Registered children are tracked by name; everyone else shares one guest slot."""
         return speaker if speaker and speaker in self.profiles else None
@@ -252,7 +260,7 @@ class Santa:
             self.warm_up()
 
         legacy = safety.legacy()
-        gate = speech.Gate(allow_ho=not self.ho_once or cues.sings_or_jokes(text))
+        gate = speech.Gate(allow_ho=not self.ho_once or cues.sings_or_jokes(text), names=self._names(speaker))
         seg = speech.Segmenter()
         t0 = time.perf_counter()
         first = first_sentence = None
