@@ -249,7 +249,7 @@ class CallSession:
         try:
             t0 = self.clock()
             await self.send({"type": "ring_start"})
-            warm = self._run(self.w.brain, self.brain.warm_up)
+            warm = self._run(self.w.brain, self._warm_up_for, epoch)
             await asyncio.sleep(self.s.ring_min_s)
             left = self.s.ring_max_s - (self.clock() - t0)
             if left > 0 and not warm.done():
@@ -267,6 +267,13 @@ class CallSession:
             self._start_silence_watch(epoch)
         except asyncio.CancelledError:
             pass
+
+    def _warm_up_for(self, epoch: int) -> bool:
+        """Brain thread. A warm-up queued by a Call that was hung up before it ran is skipped: on a hung model runner
+        it would hold the next Call for a whole warm-up timeout. The next Call queues its own."""
+        if epoch != self.epoch:
+            return False
+        return self.brain.warm_up()
 
     # ------------------------------------------------------------------------------------- Hang up
     async def hangup(self, reason: str = "button") -> None:

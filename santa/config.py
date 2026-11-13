@@ -15,6 +15,9 @@ MODEL = os.getenv("SANTA_MODEL", "ai/gemma4:e4b")
 REQUEST_TIMEOUT = float(os.getenv("SANTA_TIMEOUT", "15.0"))
 # ...but loading a model into memory takes 6-30 s (measured), so warm-up gets a long timeout of its own.
 WARMUP_TIMEOUT = float(os.getenv("SANTA_WARMUP_TIMEOUT", "90.0"))
+# After a warm-up fails, a reply does not warm up again for this long: it goes straight to its request, which has the
+# short REQUEST_TIMEOUT. A hung runner must not cost a second WARMUP_TIMEOUT inside the same reply.
+WARMUP_RETRY_SECONDS = float(os.getenv("SANTA_WARMUP_RETRY", str(WARMUP_TIMEOUT)))
 # If the last successful model call is older than this, Docker may have unloaded the model: warm up again first.
 IDLE_REWARM_SECONDS = float(os.getenv("SANTA_IDLE_REWARM", "300"))
 

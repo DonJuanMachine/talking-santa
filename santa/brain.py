@@ -90,6 +90,7 @@ class Santa:
         self.last_error: str | None = None  # why the last reply was the fallback (None = something was spoken)
         self.last_ok_time: float | None = None       # _now() of the last successful model call
         self.last_warmup_seconds: float | None = None  # how long the last warm_up() took
+        self.last_warmup_failed: float | None = None   # _now() when the last warm_up() failed (None after a success)
         self._start = 0                 # history[_start:] is the window sent to the model
         # Stage I conversation arc: per child, this conversation only (a new Santa = a new Call = a fresh arc).
         self.arc: arc.Arc | None = arc.Arc() if arc.enabled() else None
@@ -214,16 +215,19 @@ class Santa:
         except Exception as e:
             self.last_warmup_seconds = time.perf_counter() - t0
             self.last_error = f"warmup_error: {type(e).__name__}: {e}"[:160]
+            self.last_warmup_failed = _now()
             return False
         self.last_warmup_seconds = time.perf_counter() - t0
         self.last_ok_time = _now()
+        self.last_warmup_failed = None
         self.last_error = None
         return True
 
     # -- generation ---------------------------------------------------------
     def reply_stream(self, speaker: str | None, text: str) -> Iterator[str]:
         """Yield what Santa says, sentence by sentence (FALLBACK as the only item if nothing can be said).
-        Exactly one model call (plus a warm-up when the model may have been unloaded). At the end self.last_reply
+        Exactly one model call (plus a warm-up when the model may have been unloaded, unless a warm-up failed less
+        than config.WARMUP_RETRY_SECONDS ago). At the end self.last_reply
         holds the Reply; history and log are updated even if the caller stops iterating early."""
         # Build everything that can raise BEFORE touching history, so history keeps strict user/assistant alternation.
         messages, label, _redacted = self.build_messages(speaker, text)
@@ -240,7 +244,11 @@ class Santa:
                 return
 
         # The model may have been unloaded while Santa sat idle (the normal timeout is too short for a cold load).
-        if self.last_ok_time is None or _now() - self.last_ok_time > config.IDLE_REWARM_SECONDS:
+        # A warm-up that failed a moment ago is not repeated: on a hung runner it would only wait another
+        # WARMUP_TIMEOUT before the request, which has its own short timeout.
+        failed = self.last_warmup_failed
+        if (self.last_ok_time is None or _now() - self.last_ok_time > config.IDLE_REWARM_SECONDS) and \
+                (failed is None or _now() - failed >= config.WARMUP_RETRY_SECONDS):
             self.warm_up()
 
         legacy = safety.legacy()

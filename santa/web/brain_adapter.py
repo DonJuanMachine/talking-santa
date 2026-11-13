@@ -6,7 +6,8 @@ All brain work runs on ONE thread (the session's brain executor), so warm-up, re
 
 Hang up cancels the model call: Santa gets a client wrapper whose streamed responses stop (and close the HTTP
 response) at the next chunk once the turn's cancel event is set. The brain then finishes the turn normally with
-whatever it had.
+whatever it had. A turn hung up before its job starts never calls the model, and one hung up during its warm-up
+sends no request (on a hung model runner either would hold the brain thread, and so the next Call, for its timeout).
 """
 import threading
 import time
@@ -37,6 +38,10 @@ class _Turn:
         self.first_token_at: float | None = None
 
 
+class TurnCancelled(Exception):
+    """The turn was hung up before its streamed request was sent (the brain treats it like any model error)."""
+
+
 class CancellableClient:
     """Wraps an OpenAI-compatible client. Only streamed calls are wrapped; everything else passes through."""
 
@@ -49,10 +54,13 @@ class CancellableClient:
         return CancellableClient(self._inner.with_options(**kw), self._state)
 
     def _create(self, **kw):
+        turn = self._state.turn
+        if kw.get("stream") and turn is not None and turn.cancel.is_set():
+            raise TurnCancelled("hung up before the request")
         res = self._inner.chat.completions.create(**kw)
         if not kw.get("stream"):
             return res
-        return self._wrap(res, self._state.turn)
+        return self._wrap(res, turn)
 
     @staticmethod
     def _wrap(stream, turn):
@@ -111,6 +119,7 @@ class SantaBrain:
         old = self.santa
         self.santa = self._fresh()
         self.santa.last_ok_time = old.last_ok_time          # the model is as warm as it was
+        self.santa.last_warmup_failed = old.last_warmup_failed
         self.santa.history.append({"role": "assistant", "content": canned.GREETING_SAID})   # as chat.py does
 
     def end_call(self) -> dict:
@@ -125,6 +134,8 @@ class SantaBrain:
 
     def reply(self, speaker, text, on_sentence, cancel: threading.Event | None = None) -> ReplyInfo:
         """Blocking. on_sentence(s) gets every sentence reply_stream yields, in order (gate output or FALLBACK)."""
+        if cancel is not None and cancel.is_set():
+            return ReplyInfo(cancelled=True)        # hung up while this job was queued: no model call, no history
         turn = _Turn()
         if cancel is not None:
             turn.cancel = cancel
