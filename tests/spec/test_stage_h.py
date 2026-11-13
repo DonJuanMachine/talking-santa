@@ -207,6 +207,7 @@ def test_canned_lines_are_the_specified_text_and_pass_the_rule_checks():
         "say_again": "Hmm, Santa didn't quite hear that. Can you say it again?",
         "still_here": "I'm still here. Take your time.",
         "goodbye": "Bye bye for now! Merry Christmas!",
+        "hold": "Hmm, let me think about that.",                 # P5-1: once on a slow turn (test_p5_slow.py)
     }
     for name, text in canned.TEXT.items():
         assert speech.sanitize_ex(text) == (text, None), name

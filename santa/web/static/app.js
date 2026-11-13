@@ -5,9 +5,9 @@
   const overlay = $("overlay"), subEl = $("sub");
   // Top line under "Santa Claus" (FaceTime style): what the call is doing, or the call timer once Santa answers.
   const SUB = { IDLE: "Call Santa", RINGING: "Calling…", HANGUP: "Call ended" };
-  // Line under the picture, during a call only.
-  const LABEL = { LISTENING: "Santa is listening", THINKING: "Santa is thinking…" };
+  // Line under the picture, during a call only: callstatus.js (with the slow-brain wording).
   let callStart = null;              // when Santa answered (ms), for the timer
+  let slow = false;                  // the server said this turn is slow to answer (callstatus.js slowAfter)
 
   let ws = null, ctx = null, micStream = null, micNode = null, srcNode = null;
   let state = "IDLE", active = null, children = [];
@@ -49,7 +49,7 @@
     ws = null;                                                 // send() and the mic stop using it at once
     if (dead) { dead.onopen = dead.onclose = dead.onmessage = null; try { dead.close(); } catch (e) {} }
     stopAll(); stopRing(true); stopMic();
-    state = "IDLE"; lostNote = LOST_TEXT;
+    state = "IDLE"; lostNote = LOST_TEXT; slow = false;
     render();
     setTimeout(connect, RECONNECT_MS);
   }
@@ -57,7 +57,10 @@
   function setStatus(t) { statusEl.textContent = t; }
 
   function onJson(m) {
+    const wasSlow = slow;
+    slow = SantaStatus.slowAfter(slow, state, m);
     switch (m.type) {
+      case "slow": if (slow !== wasSlow) render(); break;      // "taking a while" + the grown-ups' note
       case "state":
         state = m.state; active = m.active; children = m.children || [];
         if (state !== "IDLE") lostNote = null;
@@ -68,7 +71,7 @@
       case "ring_stop": stopRing(); break;
       case "stop_audio": stopAll(); break;
       case "busy": stopMic(); setStatus("Santa is on another call. Try again in a minute."); break;
-      case "audio_start": newUtt(m.id); break;
+      case "audio_start": newUtt(m.id); if (wasSlow) render(); break;   // Santa speaks: the slow text clears
       case "audio_end": { const u = utt.get(m.id); if (u) { u.ended = true; maybeEnded(m.id); } break; }
       case "metrics": showMetrics(m); break;
       case "forgot":
@@ -265,7 +268,10 @@
     const answered = !(state in SUB);           // GREETING, LISTENING, THINKING, SPEAKING
     if (answered && callStart === null) callStart = Date.now();
     if (!answered) { callStart = null; subEl.textContent = SUB[state]; } else clock();
-    setStatus(LABEL[state] || (state === "IDLE" && lostNote) || "");
+    setStatus(SantaStatus.statusText(state, slow, lostNote));
+    const slowNote = SantaStatus.noteText(state, slow);
+    if (slowNote) note.textContent = slowNote;
+    else if (note.textContent === SantaStatus.SLOW_NOTE) note.textContent = "";
     const inCall = state !== "IDLE";
     big.className = inCall ? "hang" : "call";   // CSS swaps the icon: handset on green, X on red
     big.setAttribute("aria-label", inCall ? "Hang up" : "Call Santa");

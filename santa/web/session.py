@@ -102,7 +102,8 @@ class CallSession:
         self.metrics: list[dict] = []
         self.counters = {"calls": 0, "turns": 0, "say_again": 0, "dropped_short": 0, "extend_fired": 0,
                          "fallbacks": 0, "silence_prompts": 0, "silence_hangups": 0, "forget_presses": 0,
-                         "frames_dropped_gated": 0, "tts_lines": 0, "cancelled_turns": 0}
+                         "frames_dropped_gated": 0, "tts_lines": 0, "cancelled_turns": 0, "slow_turns": 0}
+        self.last_hold_at: float | None = None  # when the "hold" line last played in this call (hold_every_s)
         self.hangup_marks: list[dict] = []
         self.closed = False
         self._bg_tasks: set = set()
@@ -243,6 +244,7 @@ class CallSession:
         # any reply, but a Hang up pressed right now is handled at once.
         self._run(self.w.brain, self.brain.new_call)
         self.silence_stage = 0
+        self.last_hold_at = None
         await self.set_state(State.RINGING)
         self._start_ticks()
         self._start_flow(self._ring_and_greet(epoch))
@@ -262,6 +264,8 @@ class CallSession:
             if epoch != self.epoch:
                 return
             await self.send({"type": "ring_stop"})
+            if not warm.done():                             # the child's first turn will wait for the model
+                await self.send({"type": "slow", "where": "ring"})
             await self.set_state(State.GREETING)
             if not await self.speak_canned("greeting", epoch):
                 return
@@ -427,6 +431,10 @@ class CallSession:
 
         fut = self._run(self.w.brain, self.brain.reply, speaker, text, on_sentence, cancel)
         fut.add_done_callback(lambda f: loop.call_soon_threadsafe(q.put_nowait, done))
+        # Nothing from the brain for slow_s: a marker joins the queue. Anything the brain sends first cancels it.
+        slow = object()
+        slow_timer = loop.call_later(self.s.slow_s, q.put_nowait, slow) if self.s.slow_s > 0 else None
+        heard_any = False
         uid = self._new_uid()
         total = 0
         started = False
@@ -434,6 +442,13 @@ class CallSession:
         try:
             while True:
                 item = await q.get()
+                if item is slow:
+                    if not heard_any and not await self._slow_turn(epoch):
+                        return
+                    continue
+                heard_any = True
+                if slow_timer is not None:
+                    slow_timer.cancel()
                 if item is done:
                     break
                 sentence, t_released = item
@@ -489,8 +504,26 @@ class CallSession:
             self.counters["cancelled_turns"] += 1
             raise
         finally:
+            if slow_timer is not None:
+                slow_timer.cancel()
             if self.cancel_event is cancel:
                 self.cancel_event = None
+
+    async def _slow_turn(self, epoch: int) -> bool:
+        """The brain has sent nothing for slow_s (once per turn). Santa says the canned "hold" line (at most once per
+        hold_every_s in this call), then the page is told, in THINKING, so its "taking a while" text stays up until
+        the answer. Sentences arriving meanwhile wait in the queue. The mic stays closed (it only opens in
+        LISTENING). False if the call moved on."""
+        self.counters["slow_turns"] += 1
+        now = self.clock()
+        if self.last_hold_at is None or now - self.last_hold_at >= self.s.hold_every_s:
+            self.last_hold_at = now
+            await self.set_state(State.SPEAKING)
+            if not await self.speak_canned("hold", epoch):
+                return False
+            await self.set_state(State.THINKING)
+        await self.send({"type": "slow"})
+        return epoch == self.epoch
 
     # ------------------------------------------------------------------------------------- metrics (numbers only)
     def _emit_metrics(self, m: dict, uid: int) -> None:

@@ -87,6 +87,10 @@ class Settings:
     # liveness: during a call the page gets {"type": "tick"} this often (0 = off). The page treats LOST_MS
     # (static/liveness.js, 6 s) without any message as a dead connection, so keep this well under half of that.
     tick_s: float = _f("SANTA_TICK_S", 2.5)
+    # slow brain (P5-1): no first sentence this long into a reply -> the page gets {"type": "slow"} (once per turn)
+    # and Santa says the canned "hold" line, at most once per hold_every_s in one call. No timeout changes.
+    slow_s: float = _f("SANTA_SLOW_S", 10)
+    hold_every_s: float = _f("SANTA_HOLD_EVERY_S", 60)
 
     # personal (local/, gitignored): Santa's picture
     santa_image: Path | None = field(default_factory=local.santa_image)

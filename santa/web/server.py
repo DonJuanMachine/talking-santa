@@ -10,6 +10,10 @@ WebSocket protocol (JSON text messages + binary audio):
                      | {"type": "busy"} (another page is already on a call: one call at a time)
                      | {"type": "tick"} (every settings.tick_s during a call, never while idle: the page's liveness
                        signal; app.js resets to IDLE after liveness.js LOST_MS without any message)
+                     | {"type": "slow"} (once per turn: no first sentence after settings.slow_s; sent in THINKING,
+                       after the canned "hold" line when one plays; the page shows "taking a while" until the next
+                       state that is not THINKING) | {"type": "slow", "where": "ring"} (the ring's warm-up was still
+                       running when the greeting started)
   close code 4401: this device has not entered the PIN (the page reloads to the PIN screen)
   close code 1013: too many call pages are open (MAX_SESSIONS); the page retries a little later
 """

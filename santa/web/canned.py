@@ -13,6 +13,7 @@ TEXT = {
     "say_again": "Hmm, Santa didn't quite hear that. Can you say it again?",
     "still_here": "I'm still here. Take your time.",
     "goodbye": "Bye bye for now! Merry Christmas!",
+    "hold": "Hmm, let me think about that.",   # a slow turn (settings.slow_s); a filler, not in the brain's history
 }
 
 LINES: dict[str, Spoken] = {k: canned(v) for k, v in TEXT.items()}   # raises at import if a line fails a rule
