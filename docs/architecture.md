@@ -193,12 +193,15 @@ and phone numbers in them are replaced before the model sees them and are never 
 
 **WebSocket messages** (`server.py` module docstring):
 - browser to server: `hello`, `call`, `hangup`, `set_child` (a name or null), `forget_last`, `playback_started` and
-  `playback_ended` (with an id), and binary 16-bit little-endian PCM at 16 kHz mono.
+  `playback_ended` (with an id), `client_lost` (numbers only, sent once after the page reconnects when its own watchdog
+  ended a call; the server logs it), and binary 16-bit little-endian PCM at 16 kHz mono.
 - server to browser: `state` (with the active child and the children), `ring_start`, `ring_stop`, `stop_audio`,
   `audio_start` (id, sample rate) followed by binary audio and `audio_end`, `metrics` (numbers), `forgot`, `busy` (another
   page is on a call), `tick` (every `SANTA_TICK_S` during a call), and `slow` (once per turn after `SANTA_SLOW_S`, or
   while the ring's warm-up is still running).
-- close code 4401: this device has not entered the PIN. Close code 1013: too many call pages are open (4).
+- close code 4401: this device has not entered the PIN. Close code 1013: too many call pages are open (4). Close code
+  4000: the page's watchdog gave up on the connection. The server logs a warning (state, call length, turns, uptime)
+  for any close during a call.
 
 ## 4. Call lifecycle
 

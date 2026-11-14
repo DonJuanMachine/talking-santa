@@ -25,6 +25,8 @@ from .endpoint import Dropped, Endpointer, Utterance
 
 log = logging.getLogger("santa.web")
 MAX_AUDIO_MSG = 16 * 1024      # bytes per binary WebSocket message (server.py drops bigger); the page sends 1 KiB
+TICK_LATE_S = 1.0              # a liveness tick (or the send of one) slower than this by more is logged as a warning
+_BOOT = time.time()            # about when this server process started (wall clock, so a sleeping Mac counts)
 
 
 def _uid(value) -> int:
@@ -33,6 +35,14 @@ def _uid(value) -> int:
         return int(value) if isinstance(value, (int, float, str)) and abs(int(value)) < 2**31 else -1
     except (ValueError, OverflowError):
         return -1
+
+
+def _num(value) -> float:
+    """A number from the page for the log: rounded, 0 to 10 million, else -1. Never any text, so the page cannot
+    write what it likes into the log."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 <= value <= 1e7:
+        return -1
+    return round(value, 1)
 
 
 class State(str, Enum):
@@ -109,6 +119,41 @@ class CallSession:
         self._bg_tasks: set = set()
         self.turn_speaker: str | None = None    # child of the turn being answered (Forget last during a reply)
         self.forget_this_turn = False
+        self.call_started: float | None = None  # clock() when the current call began (None while idle)
+        self.turns0 = 0                         # counters["turns"] when it began
+        self.last_page_msg: float | None = None  # clock() of the last message of any kind from the page
+        self.last_tick: float | None = None     # clock() of the last liveness tick sent
+
+    # ------------------------------------------------------------------------------------------- diagnostics
+    def note_page_message(self) -> None:
+        """The WebSocket handler calls this for every message from the page (audio frames included)."""
+        self.last_page_msg = self.clock()
+
+    def diag(self) -> str:
+        """Numbers and state names only (no speech, no names): where this session was when something went wrong."""
+        now = self.clock()
+
+        def ago(t):
+            return "-" if t is None else f"{now - t:.1f}"
+
+        parts = [f"state={self.state.value}",
+                 f"call_s={ago(self.call_started)}",
+                 f"turns={self.counters['turns'] - self.turns0 if self.call_started is not None else '-'}",
+                 f"page_silent_s={ago(self.last_page_msg)}",
+                 f"last_tick_s={ago(self.last_tick)}"]
+        try:
+            ok = self.brain.last_ok_time
+            parts.append(f"model_ok_s={'-' if ok is None else f'{time.monotonic() - ok:.0f}'}")
+        except Exception:
+            pass
+        parts.append(f"server_up_h={(time.time() - _BOOT) / 3600:.1f}")
+        return " ".join(parts)
+
+    def _send_failed(self, msg_type, exc: Exception) -> None:
+        """A send to the page failed: the connection is gone. Say so once, with what it was sending."""
+        if not self.closed:
+            log.warning("sending to the page failed (%s, sending %s): %s", type(exc).__name__, msg_type, self.diag())
+        self.closed = True
 
     # ------------------------------------------------------------------------------------------- output
     async def send(self, msg: dict) -> None:
@@ -116,19 +161,21 @@ class CallSession:
             return
         try:
             await self._send_json(msg)
-        except Exception:
-            self.closed = True
+        except Exception as e:
+            self._send_failed(msg.get("type"), e)
 
     async def send_bytes(self, data: bytes) -> None:
         if self.closed:
             return
         try:
             await self._send_bytes(data)
-        except Exception:
-            self.closed = True
+        except Exception as e:
+            self._send_failed("audio", e)
 
     async def set_state(self, st: State) -> None:
         self.state = st
+        if st == State.IDLE:
+            self.call_started = None
         if st != State.LISTENING:
             self.mic_open_at = None
         await self.send({"type": "state", "state": st.value, "active": self.active, "children": self.brain.names()})
@@ -205,6 +252,22 @@ class CallSession:
             self.playback_ended(_uid(msg.get("id")))
         elif t == "hello":
             await self.set_state(self.state)
+        elif t == "client_lost":
+            self._client_lost(msg)
+
+    def _client_lost(self, msg: dict) -> None:
+        """The page ended a call because nothing arrived for a while, then reconnected and says what it saw.
+        Logged as numbers and fixed words only: the page cannot put its own text into the log."""
+        def word(key, allowed):
+            v = msg.get(key)
+            return v if isinstance(v, str) and v in allowed else "?"
+
+        shown = word("visible", ("visible", "hidden"))
+        page_state = word("state", tuple(s.value for s in State))
+        log.warning("the page gave up on the connection: nothing received for %s ms; its checks ran up to %s ms apart; "
+                    "unsent bytes %s; tab %s; page state %s",
+                    _num(msg.get("silent_ms")), _num(msg.get("check_gap_ms")), _num(msg.get("buffered")),
+                    shown, page_state)
 
     def playback_started(self, uid: int) -> None:
         if uid in self.played:              # only Santa's own utterance ids: a client cannot grow this dict
@@ -239,6 +302,9 @@ class CallSession:
         self.epoch += 1
         epoch = self.epoch
         self.counters["calls"] += 1
+        self.call_started = self.clock()
+        self.turns0 = self.counters["turns"]
+        self.last_tick = None
         self.active = None                                  # every Call starts as guest (PHASE2_NOTES §1)
         # Not awaited: the brain thread runs jobs in order, so new_call() still runs before the warm-up and before
         # any reply, but a Hang up pressed right now is handled at once.
@@ -246,6 +312,7 @@ class CallSession:
         self.silence_stage = 0
         self.last_hold_at = None
         await self.set_state(State.RINGING)
+        log.info("call started: %s", self.diag())
         self._start_ticks()
         self._start_flow(self._ring_and_greet(epoch))
 
@@ -292,6 +359,7 @@ class CallSession:
             await self.set_state(State.IDLE)
             return
         from_state = self.state.value
+        log.info("call ending (%s): %s", reason, self.diag())
         self.epoch += 1
         epoch = self.epoch
         if self.cancel_event is not None:
@@ -352,11 +420,20 @@ class CallSession:
         """During a call (any state but IDLE), a tiny message every tick_s, so the page can tell a dead connection
         from a quiet one. Ends when the call is back to IDLE; the next Call starts it again."""
         try:
+            prev = self.clock()
             while not self.closed:
                 await asyncio.sleep(self.s.tick_s)
+                now = self.clock()
+                late, prev = now - prev - self.s.tick_s, now
                 if self.state == State.IDLE:
                     return
+                if late > TICK_LATE_S:      # the loop was blocked: the page may give up (it waits 6 s)
+                    log.warning("a liveness tick was %.1f s late (the server was busy): %s", late, self.diag())
                 await self.send({"type": "tick"})
+                self.last_tick = self.clock()
+                if self.last_tick - now > TICK_LATE_S:      # the page is not reading its socket
+                    log.warning("sending a liveness tick took %.1f s: %s", self.last_tick - now, self.diag())
+                    prev = self.last_tick
         except asyncio.CancelledError:
             pass
 

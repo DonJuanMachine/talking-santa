@@ -21,6 +21,7 @@
   const LOST_TEXT = "Lost connection to Santa";
   const RECONNECT_MS = 1000;
   let lostNote = null;
+  let lostReport = null;             // what the watchdog saw, sent to the server once the page is connected again
   const watchdog = SantaLiveness.makeWatchdog({
     inCall: () => ws !== null && ws.readyState === 1 && state !== "IDLE",   // a closed socket reconnects on its own
     onLost: connectionLost,
@@ -30,9 +31,13 @@
   function connect() {
     ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws`);
     ws.binaryType = "arraybuffer";
-    ws.onopen = () => send({ type: "hello" });
+    ws.onopen = () => {
+      send({ type: "hello" });
+      if (lostReport) { send({ type: "client_lost", ...lostReport }); lostReport = null; }   // numbers for the server log
+    };
     ws.onclose = (ev) => {
       if (ev.code === 4401) { location.reload(); return; }   // PIN needed (e.g. the server restarted)
+      if (state !== "IDLE") console.warn("Santa: connection closed during a call", ev.code, ev.reason, ev.wasClean);
       stopAll(); stopRing(true);
       if (ev.code === 1013) {                                  // too many Santa pages open
         setStatus("Too many Santa pages are open. Close one."); setTimeout(connect, 5000); return;
@@ -44,10 +49,16 @@
       typeof ev.data === "string" ? onJson(JSON.parse(ev.data)) : onAudio(ev.data);
     };
   }
-  function connectionLost() {
+  function connectionLost(why) {
     const dead = ws;
+    lostReport = { ...why, buffered: dead ? dead.bufferedAmount : 0, visible: document.visibilityState, state };
+    console.warn("Santa: no message for", lostReport.silent_ms, "ms; page checks ran up to", lostReport.check_gap_ms,
+      "ms apart; tab", lostReport.visible, "; state", lostReport.state);
     ws = null;                                                 // send() and the mic stop using it at once
-    if (dead) { dead.onopen = dead.onclose = dead.onmessage = null; try { dead.close(); } catch (e) {} }
+    if (dead) {
+      dead.onopen = dead.onclose = dead.onmessage = null;
+      try { dead.close(4000, "no message for 6 s"); } catch (e) {}   // 4000: the server logs that the page gave up
+    }
     stopAll(); stopRing(true); stopMic();
     state = "IDLE"; lostNote = LOST_TEXT; slow = false;
     render();

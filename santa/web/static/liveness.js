@@ -8,19 +8,27 @@
     CHECK_MS: 1000,   // how often to look; the alarm comes at most this long after LOST_MS
   });
 
-  // seen() on every message. onLost() runs once when inCall() is true and nothing was seen for lostMs; it is
-  // expected to end the call on the page, so inCall() turns false and the alarm does not repeat.
+  // seen() on every message. onLost(info) runs once when inCall() is true and nothing was seen for lostMs; it is
+  // expected to end the call on the page, so inCall() turns false and the alarm does not repeat. `info` is
+  // {silent_ms, check_gap_ms}: how long nothing arrived, and the longest wait between two of this watchdog's own
+  // checks since then. A check gap far above checkMs means this page was busy or throttled (not the server).
   function makeWatchdog({ inCall, onLost, lostMs = LIVENESS.LOST_MS, checkMs = LIVENESS.CHECK_MS,
                           now = () => performance.now() }) {
-    let last = now(), timer = null;
+    let last = now(), lastCheck = last, maxGap = 0, timer = null;
+    const info = () => ({ silent_ms: Math.round(now() - last), check_gap_ms: Math.round(maxGap) });
     function check() {
-      if (inCall() && now() - last >= lostMs) {
-        last = now();
-        onLost();
+      const t = now();
+      maxGap = Math.max(maxGap, t - lastCheck);
+      lastCheck = t;
+      if (inCall() && t - last >= lostMs) {
+        const why = info();
+        last = t;
+        onLost(why);
       }
     }
     return {
-      seen() { last = now(); },
+      info,
+      seen() { last = now(); maxGap = 0; },
       start() { if (timer === null) timer = setInterval(check, checkMs); },
       stop() { if (timer !== null) { clearInterval(timer); timer = null; } },
       check,

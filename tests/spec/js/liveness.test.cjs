@@ -79,6 +79,40 @@ test("after a reconnect, the next call is watched again from its first message",
   assert.equal(p.lost, 2);
 });
 
+test("onLost gets what the watchdog saw: how long it was silent", () => {
+  const seen = [];
+  mock.timers.enable({ apis: ["setInterval"] });
+  let t = 0, inCall = true;
+  const wd = makeWatchdog({ inCall: () => inCall, onLost: (why) => { inCall = false; seen.push(why); }, now: () => t });
+  wd.start();
+  for (let i = 0; i < 80; i++) { t += 100; mock.timers.tick(100); }
+  assert.equal(seen.length, 1);
+  assert.equal(seen[0].silent_ms, 6000);
+  assert.ok(seen[0].check_gap_ms <= 1000);        // the checks ran on time: the silence came from outside the page
+});
+
+test("a page that was stalled shows a long gap between its own checks", () => {
+  const seen = [];
+  mock.timers.enable({ apis: ["setInterval"] });
+  let t = 0, inCall = true;
+  const wd = makeWatchdog({ inCall: () => inCall, onLost: (why) => { inCall = false; seen.push(why); }, now: () => t });
+  wd.start();
+  for (let i = 0; i < 20; i++) { t += 100; mock.timers.tick(100); }
+  t += 8000;                                      // the page's main thread was busy for 8 s: one late check
+  mock.timers.tick(1000);
+  assert.equal(seen.length, 1);
+  assert.ok(seen[0].check_gap_ms >= 8000, `gap ${seen[0].check_gap_ms}`);
+  assert.ok(seen[0].silent_ms >= 8000);
+});
+
+test("a message clears the gap: only the stretch since the last message is reported", () => {
+  const p = page();
+  p.advance(1000);
+  assert.ok(p.wd.info().silent_ms >= 1000);
+  p.wd.seen();
+  assert.deepEqual(p.wd.info(), { silent_ms: 0, check_gap_ms: 0 });
+});
+
 test("stop() ends the checks", () => {
   const p = page();
   p.wd.stop();

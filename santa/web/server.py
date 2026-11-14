@@ -3,6 +3,8 @@
 WebSocket protocol (JSON text messages + binary audio):
   browser -> server  {"type": "hello"} | {"type": "call"} | {"type": "hangup"} | {"type": "set_child", "name": str|null}
                      | {"type": "forget_last"} | {"type": "playback_started", "id": n} | {"type": "playback_ended", "id": n}
+                     | {"type": "client_lost", silent_ms, check_gap_ms, buffered, visible, state} (sent once after the
+                       page reconnects, when its own watchdog ended a call; logged as numbers only)
                      binary: int16 little-endian PCM, 16 kHz mono (the AudioWorklet resamples)
   server -> browser  {"type": "state", "state", "active", "children"} | ring_start | ring_stop | stop_audio
                      | {"type": "audio_start", "id", "sr"} + binary (uint32 id + int16 PCM at sr) + {"type": "audio_end", "id"}
@@ -14,6 +16,7 @@ WebSocket protocol (JSON text messages + binary audio):
                        after the canned "hold" line when one plays; the page shows "taking a while" until the next
                        state that is not THINKING) | {"type": "slow", "where": "ring"} (the ring's warm-up was still
                        running when the greeting started)
+  close code 4000: the page's watchdog gave up on the connection (the server logs a warning for any close mid-call)
   close code 4401: this device has not entered the PIN (the page reloads to the PIN screen)
   close code 1013: too many call pages are open (MAX_SESSIONS); the page retries a little later
 """
@@ -236,12 +239,15 @@ def create_app(settings: Settings | None = None, alerter: Alerter | None = None,
                            send_json=lambda m: sock.send_text(json.dumps(m)), send_bytes=sock.send_bytes,
                            workers=eng.workers, canned_audio=eng.canned_audio)
         eng.sessions.add(sess)
+        close_code = None
         try:
             await sess.set_state(State.IDLE)
             while True:
                 msg = await sock.receive()
                 if msg.get("type") == "websocket.disconnect":
+                    close_code = msg.get("code")
                     break
+                sess.note_page_message()
                 if msg.get("bytes") is not None:
                     if len(msg["bytes"]) > MAX_AUDIO_MSG:   # page sends 1 KiB; a huge frame would block the loop
                         sess.counters["frames_dropped_big"] = sess.counters.get("frames_dropped_big", 0) + 1
@@ -258,9 +264,13 @@ def create_app(settings: Settings | None = None, alerter: Alerter | None = None,
                             await sock.send_text(json.dumps({"type": "busy"}))   # one call at a time
                             continue
                         await sess.handle(data)
-        except WebSocketDisconnect:
-            pass
+        except WebSocketDisconnect as e:
+            close_code = e.code
         finally:
+            if sess.state != State.IDLE:        # 4000: the page itself gave up (no message for 6 s); 1001: tab closed
+                log.warning("connection closed during a call (close code %s): %s", close_code, sess.diag())
+            else:
+                log.info("connection closed while idle (close code %s)", close_code)
             await sess.close()
             eng.sessions.discard(sess)
             for k, v in sess.counters.items():

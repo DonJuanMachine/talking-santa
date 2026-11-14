@@ -6,6 +6,17 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
 
 ## [Unreleased]
 
+### Diagnostics
+- "Lost connection to Santa" now leaves a trail. The log gets a warning whenever a connection closes during a call (close
+  code, state, call length, turns, how long the page had been quiet, how long the server and the model have been up), a
+  warning when a liveness tick is more than 1 s late or its send takes more than 1 s, and one when a send to the page
+  fails. The page closes with code 4000 when its own watchdog gives up and, once reconnected, reports how long it was
+  silent and how far apart its own checks ran (this tells a busy or throttled page from a silent server). It also writes
+  the same numbers to the browser console. Call start and end (with the reason) are logged at `--verbose`. State names
+  and numbers only; the page's report is limited to numbers and fixed words, so it cannot write its own text into the
+  log. Behavior is unchanged. Code: `santa/web/session.py`, `server.py`, `static/app.js`, `static/liveness.js`; tests:
+  `tests/spec/test_diagnostics.py`, `tests/spec/js/liveness.test.cjs`.
+
 ### Child-safety fixes (review)
 - When a safety rule stops an answer after Santa has already said part of it, Santa now ends with the fixed fallback
   line (which asks the child to tell a grown-up) instead of stopping on a cut-off start. Said right at the stop, at

@@ -291,7 +291,7 @@ What is written to disk, where and when:
 | Call page (default) | `profiles.json`, rewritten after each turn of a registered child, on Forget last and at Hang up; `profiles.json.bak` (the previous good file); `profiles.json.tmp` while writing. Guests are never saved. | `local/` | Names, ages, nicknames, family names, short fact sentences, the `Last call:` line |
 | Call page, first start for a voice setting | Canned-line audio (`*.npy`) | `santa/web/.cache/` (gitignored) | Santa's fixed lines only |
 | Call page (default) | No audio, no transcripts, no log file | - | - |
-| Started with `scripts/start-santa.sh` | `santa.log` (private to you), `server.pid` | `local/run/` | Warnings, start-up lines, model errors, alert reasons |
+| Started with `scripts/start-santa.sh` | `santa.log` (private to you), `server.pid` | `local/run/` | Warnings, start-up lines, model errors, alert reasons, and why a call's connection ended (state names and numbers) |
 | `--debug-audio` | One `.wav` per child utterance, before recognition | `santa/web/debug_audio/` (gitignored) | **The children's voices** |
 | `--metrics-file PATH` | One line of numbers per turn | `PATH` | Timings, counters, reason codes; no text |
 | A `profiles.json` that cannot be read | `profiles.json.corrupt`, a copy of the broken file | next to the profiles file | Whatever was in it |
@@ -321,10 +321,26 @@ Numbers are the defaults in the code.
 | The model may have been unloaded | Santa warms it up first if the last good answer is older than 300 s, unless a warm-up failed less than 90 s ago | warm-up timeout 90 s |
 | The answer is slow | After 10 s with no first sentence Santa says "Hmm, let me think about that." (at most once per 60 s in a call); the page shows "taking a while" | `SANTA_SLOW_S` 10, `SANTA_HOLD_EVERY_S` 60 |
 | Hang up while waiting | No request is sent if the model has not been asked yet; a running answer stops at the next chunk | - |
-| The connection to the page is lost | The server sends a tick every 2.5 s during a call; the page ends the call after 6 s with nothing received ("Lost connection to Santa") and reconnects. A dropped connection ends the call without a goodbye and without a *Last call* line. | `SANTA_TICK_S` 2.5 |
+| The connection to the page is lost | The server sends a tick every 2.5 s during a call; the page ends the call after 6 s with nothing received ("Lost connection to Santa") and reconnects. A dropped connection ends the call without a goodbye and without a *Last call* line. The log says why (see below). | `SANTA_TICK_S` 2.5 |
 | Silence | After 45 s of no voice: "I'm still here. Take your time."; after another 45 s: goodbye and hang up | `SANTA_SILENCE_S` 45 |
 | Speech Santa cannot make out | "Hmm, Santa didn't quite hear that. Can you say it again?" | - |
 | Idle between calls | A small warm-up request every 100 s keeps the model loaded | `SANTA_KEEPALIVE_S` 100 |
+
+**If the page says "Lost connection to Santa":** look in `local/run/santa.log` (or the terminal, if you started with
+`scripts/run-web.sh`) for these warnings. They hold state names and numbers only, no speech.
+- `connection closed during a call (close code N): state=... call_s=... turns=... page_silent_s=... server_up_h=...`:
+  the page's socket closed mid-call. Code `4000` means the page's own watchdog gave up; `1001` is a closed or reloaded
+  tab; `1006` is a connection that dropped. `page_silent_s` is how long the page had been quiet, `server_up_h` how long
+  Santa had been running, `model_ok_s` how long ago the model last answered.
+- `the page gave up on the connection: nothing received for N ms; its checks ran up to M ms apart; tab visible|hidden`:
+  sent by the page after it reconnects. If M is much larger than 1000, the page itself was busy or throttled (a
+  background tab, a slow Mac); if it is near 1000, nothing arrived from the server.
+- `a liveness tick was N s late` and `sending a liveness tick took N s`: the server was busy, or the page was not
+  reading. Either one can make the page give up.
+- `sending to the page failed (...)`: a send failed because the connection was already gone.
+
+The page also writes the same numbers to the browser console (Cmd+Option+J in Chrome). `--verbose` adds one line when a
+call starts and one when it ends (with the reason).
 
 ## Known limits
 
