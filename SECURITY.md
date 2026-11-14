@@ -27,7 +27,6 @@ The project has no tagged releases. Fixes go to the `main` branch only.
 
 **What it protects:**
 - the children's names, ages and remembered facts
-- Santa's picture
 - the ability to start a call and talk to a child
 
 **Who it trusts:**
