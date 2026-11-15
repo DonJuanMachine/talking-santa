@@ -22,7 +22,8 @@ cp profiles.example.json local/profiles.json          # then edit
 cp ~/Pictures/my-santa.jpg local/santa.jpg            # optional
 ```
 
-To give Santa your own backstory, write plain sentences in `local/santa_world.txt` (up to 2000 characters). Start from
+To give Santa your own backstory, write plain sentences in `local/santa_world.txt` (up to 2000 characters). Easiest start: copy `local.example/santa_world.txt.example` to `local/santa_world.txt` (drop the `.example`) and edit it.
+Everything in the file is sent to the model as written, so do not add comment lines. Or start from
 the built-in one in `santa/persona.py` (`WORLD_DEFAULT`) so Santa keeps the rule to use only these names. For example:
 ```
 SANTA'S WORLD (these facts never change; always answer the same way)
