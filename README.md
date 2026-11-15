@@ -102,8 +102,10 @@ A FaceTime-style page on this Mac: a big green **Call**, a big red **Hang up**, 
 grown-ups strip (one button per registered child, **Guest**, **Forget last**). Open the address in your browser, allow
 the microphone and press Call. The server listens on `127.0.0.1` only, unless you start it with `--network`.
 
-- Every Call starts as **Guest**. Santa switches to a child when the child says their registered name (exactly one
-  name, once), or when a grown-up presses that child's button.
+- Every Call starts as **Guest**. Santa switches to a child when the child introduces themself with their registered
+  name or nickname ("I'm Wren", "my name is Wren", "this is Wren", "it's Wren"; exactly one name, once), or when a
+  grown-up presses that child's button. A name that only appears in a sentence ("Wren, wait your turn.") does not
+  switch, and nothing from a turn that names another registered child is saved.
 - **Forget last** removes the facts Santa saved from the selected child's most recent turn; a second press does nothing.
   It does not remove older facts or the *Last call* line (see below); edit `local/profiles.json` for those.
 - The **Timings** button shows per-turn latency (numbers only). `--verbose` logs the same numbers to the console.
@@ -348,7 +350,8 @@ call starts and one when it ends (with the reason).
 
 - The safety filter removes known patterns only and is not exhaustive (known gaps: CHANGELOG.md, "Known open
   items"). The persona prompt is the first line of defence; an adult should be nearby.
-- Santa can mix up children: the active child is chosen by a spoken name.
+- Santa can mix up children: any voice near the microphone (a grown-up, a television, two children at once) is
+  taken as the active child's turn.
 - Speech recognition on children's voices is not measured.
 - Sad facts can still be stored; use Forget last or edit the file.
 - Forget last does not remove the *Last call* line, older facts or hand-typed facts.
