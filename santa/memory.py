@@ -229,9 +229,21 @@ def looks_like_instruction(fact: str) -> bool:
     return spec.looks_like_instruction(fact)
 
 
+def _one_line(text: str) -> str:
+    """One line (a newline would add a line to the prompt), with no ( ) [ ]: the facts note is itself in brackets,
+    so a fact must not be able to close it and open a note of its own (P4-6)."""
+    return " ".join(re.sub(r"[()\[\]]", " ", str(text)).split())
+
+
+def _refused(fact: str) -> bool:
+    """Too long, private, instruction-like, or a claim about what Santa promised, said or gave (P4-6)."""
+    return (len(fact) > 100 or safety.looks_private_fact(fact) or looks_like_instruction(fact)
+            or spec.looks_like_santa_claim(fact))
+
+
 def add_fact(profiles: dict, name: str, fact: str) -> bool:
-    fact = " ".join(fact.split()).rstrip(".")      # one line: a newline would add a line to the prompt
-    if not fact or len(fact) > 100 or safety.looks_private_fact(fact) or looks_like_instruction(fact):
+    fact = _one_line(fact).rstrip(".")
+    if not fact or _refused(fact):
         return False
     child = profiles.setdefault(name, {"facts": []})
     facts = child.setdefault("facts", [])
@@ -247,10 +259,11 @@ LAST_CALL = "Last call: "
 
 def set_last_call(profiles: dict, name: str, summary: str) -> bool:
     """Keep ONE "Last call: ..." fact per child (the newest replaces the old), at the end of the list.
-    Same checks as add_fact: one line, at most 100 characters, nothing private, nothing instruction-like."""
-    summary = " ".join(str(summary).split()).strip(" .\"'")
+    Same checks as add_fact: one line, no brackets, at most 100 characters, nothing private, nothing instruction-like,
+    no claim about what Santa promised, said or gave (after "Last call:", Santa is still a sentence's subject)."""
+    summary = _one_line(summary).strip(" .\"'")
     fact = LAST_CALL + summary
-    if not summary or len(fact) > 100 or safety.looks_private_fact(fact) or looks_like_instruction(fact):
+    if not summary or _refused(fact):
         return False
     child = profiles.setdefault(name, {"facts": []})
     facts = [f for f in child.setdefault("facts", []) if not f.startswith(LAST_CALL)]

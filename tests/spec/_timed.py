@@ -20,7 +20,8 @@ import json, sys, time
 sys.path.insert(0, sys.argv[1])
 sys.dont_write_bytecode = True
 from santa import spec, speech
-FUNCS = {"safety_reason": spec.safety_reason, "strip_ho": spec.strip_ho, "is_gift_turn": speech.is_gift_turn}
+FUNCS = {"safety_reason": spec.safety_reason, "strip_ho": spec.strip_ho, "is_gift_turn": speech.is_gift_turn,
+         "looks_like_santa_claim": spec.looks_like_santa_claim}
 for i, (fn, text, kw) in enumerate(json.loads(sys.stdin.read())):
     print(json.dumps({"start": i}), flush=True)
     t0 = time.perf_counter()
@@ -36,7 +37,7 @@ def _lines(out):
 
 
 def timed(calls, timeout=CHILD_TIMEOUT_S):
-    """calls: [(function name, text, kwargs)] with function name one of safety_reason, strip_ho, is_gift_turn.
+    """calls: [(function name, text, kwargs)] with function name one of the keys of FUNCS in _CHILD.
     Returns [(seconds, result)] in order. Fails the test if the child is not done within `timeout` seconds."""
     calls = [(fn, text, dict(kw or {})) for fn, text, kw in calls]
     env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")

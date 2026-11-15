@@ -268,6 +268,24 @@ def looks_like_instruction(text: str) -> bool:
     return bool(INSTRUCTION_RE.search(text))
 
 
+# Facts return to Santa's prompt as "Santa already knows this": a fact that claims what Santa promised, said or gave
+# would read as Santa's own word (P4-6). Not an instruction, so INSTRUCTION_RE does not catch it. Facts only; replies
+# use the promise rules. Every alternative is fixed words with single \s+ gaps: linear time.
+SANTA_CLAIM_RE = re.compile(
+    r"(?:^|[.!?;:]\s*)santa\b"                                          # Santa (or Santa's) as a sentence's subject
+    r"|\bpromis(?:e|es|ed|ing)\b"
+    r"|\bsaid\s+(?:i|she|he|they)\s+(?:can|could|will)\b"
+    r"|\bfrom\s+santa\b"
+    r"|\bsanta\s+(?:will|['’]ll|is\s+going\s+to|is\s+gonna)\b"
+    r"|\bsanta\s+(?:to\s+)?(?:say|says|said|tell|tells|told)\b"         # "wants Santa to say ...", "Santa told her"
+    r"|\bsanta\s+(?:gave|gives|brought|brings)\b",                       # not "wants Santa to bring": that is a wish
+    re.IGNORECASE)
+
+
+def looks_like_santa_claim(text: str) -> bool:
+    return bool(SANTA_CLAIM_RE.search(text))
+
+
 def looks_private_fact(text: str) -> bool:
     """For facts about to be stored in a profile: looks_private() plus last names."""
     return looks_private(text) or bool(_LASTNAME_RE.search(text))
