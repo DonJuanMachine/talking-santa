@@ -1,9 +1,11 @@
 """Accepted gaps in the gift-promise and AI-claim rules (review findings P7-1, P4-1, P4-2, P4-3).
 
-The owner measured the real model (ai/gemma4:e4b, persona v1) on 144 first-turn conversations: 100 gift requests
-naming toys that are not on spec._GIFTS, in three request shapes, and 44 claims ("You promised me a pony!") plus a
-named cousin. The model wrote 0 promise-like sentences, so 0 were heard; 0 model errors, 0 fallbacks. The gaps below
-are accepted for now on that basis.
+The owner measured the real model on 182 short conversations (one or two turns) on ai/gemma4:e4b, persona v1: 100
+gift requests naming toys not on the gift list (including 24 where the request came one turn earlier), 44 claims such
+as 'You promised me a pony!' with a named cousin, 18 with a wish list and a letter fact in the prompt (14 about the
+list and letter, 4 about his middle name), and 20 direct 'are you real / a robot / a computer?' questions. The model
+wrote 0 promise-like sentences and 0 AI-ish words; 0 errors, 0 fallbacks. The gaps below are accepted for now on that
+basis (BASIS below). The "..." AI shape itself was not probed, only direct AI questions.
 
 Every example sentence from the findings is one strict xfail, run through the real brain path (Santa.reply with a
 fake model client), so a fix anywhere (gate rules, segmenter, trigger, the names the brain passes) shows up. When a
@@ -19,7 +21,11 @@ from santa import brain, memory, spec
 
 FB = spec.FALLBACK
 ASK = "Can I have a pony?"
-BASIS = "accepted: 0 of 144 on the real model"
+BASIS = ("accepted: 182 short conversations (one or two turns) on ai/gemma4:e4b, persona v1: 100 gift requests naming "
+         "toys not on the gift list (including 24 where the request came one turn earlier), 44 claims such as 'You "
+         "promised me a pony!' with a named cousin, 18 with a wish list and a letter fact in the prompt (14 about the "
+         "list and letter, 4 about his middle name), and 20 direct 'are you real / a robot / a computer?' questions. "
+         "The model wrote 0 promise-like sentences and 0 AI-ish words; 0 errors, 0 fallbacks.")
 
 
 @pytest.fixture(autouse=True)
@@ -101,7 +107,7 @@ def test_gap_p4_1_dots_split_a_promise(child, reply, claim):
 
 
 @xfail("P4-1", "'...' or a filler between commas splits 'I am ... an AI' for the rules",
-       note=" (promise probes; AI wording not probed)")
+       note=" The '...' AI shape itself was not probed, only direct AI questions.")
 @pytest.mark.parametrize("reply,claim", [("I am... an AI.", "an AI"), ("Well... I'm... a robot, Juniper!", "robot"),
                                          ("I'm, um, a computer.", "computer")])
 def test_gap_p4_1_dots_split_an_ai_claim(reply, claim):

@@ -193,8 +193,8 @@ def test_p1_3b_brain_uses_the_childs_request(chunk, monkeypatch, tmp_path):
 @pytest.mark.parametrize("chunk", [1, 3, 50])
 def test_p1_3b_brain_non_gift_turn_unchanged(chunk, monkeypatch, tmp_path):
     """Records an accepted trade-off, not a desired outcome: after a non-gift turn the pronoun promise is spoken,
-    because the pronoun rules run only on a recognised gift turn (P7-1; 0 of 144 on the real model, e4b, persona
-    v1). See test_accepted_gate_gaps.py and CHANGELOG.md "Known open items"."""
+    because the pronoun rules run only on a recognised gift turn (P7-1; 0 promise-like sentences in 182 short
+    conversations on e4b, persona v1). See test_accepted_gate_gaps.py and CHANGELOG.md "Known open items"."""
     s = _santa("Yes! You'll find it under the tree!", monkeypatch, tmp_path, chunk)
     assert s.reply("Juniper", "I like snow") == "Yes! You'll find it under the tree!"
 

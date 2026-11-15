@@ -189,9 +189,11 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
     ("Wren will get a pony too!"; the name check is given the active child's names only).
   - Over-block, the other way round: after a gift request, "I'll put it on my list!" and similar replies are stopped
     as promises, so the child hears the fallback line instead.
-  - Basis: the owner ran `ai/gemma4:e4b` with persona v1 on 144 first-turn conversations (100 gift requests naming toys
-    that are not on the gift list, in three request shapes; 44 claims such as "You promised me a pony!" and a named
-    cousin). The model wrote 0 promise-like sentences, so 0 were heard; 0 model errors, 0 fallbacks. Requests made one
-    turn earlier and AI-claim wording were not part of this measurement.
+  - Basis: 182 short conversations (one or two turns) on `ai/gemma4:e4b`, persona v1: 100 gift requests naming toys
+    not on the gift list (including 24 where the request came one turn earlier), 44 claims such as "You promised me a
+    pony!" with a named cousin, 18 with a wish list and a letter fact in the prompt (14 about the list and letter, 4
+    about his middle name), and 20 direct "are you real / a robot / a computer?" questions. The model wrote 0
+    promise-like sentences and 0 AI-ish words; 0 errors, 0 fallbacks. The "..." AI shape itself ("I am... an AI.")
+    was not probed, only direct AI questions.
   - Every example sentence from the findings is a strict xfail in `tests/spec/test_accepted_gate_gaps.py`. When a gap
     is fixed, its test fails, and this list must be updated.
