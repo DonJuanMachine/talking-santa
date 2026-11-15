@@ -107,6 +107,7 @@ RISKY = [
 AFFIRM = ["Yes!", "Yes, Juniper!", "Of course!", "Yes yes!", "Okay!"]
 OPENERS = ["Ho ho ho!", "Ho, ho!", "Ooooh!", "Well, wow!", "Ho ho ho, Juniper!"]
 HO_INLINE = ["ho ho", "Ho ho", "ho, ho, ho", "ho-ho"]
+NEG_WORDS = ["not", "never", "no", "don't", "can't", "isn't", "won't", "nobody", "nothing", "Not", "Never"]
 STAGE = ["*waves*", "(giggles)", "*nibbles a cookie*", "(adjusts glasses)"]
 EMOJI = ["⭐", "🎄", "❄️"]
 ENDS = [".", "!", "?", "!!", "...", "?!"]
@@ -132,11 +133,22 @@ def sentence(draw):
     if draw(st.integers(0, 7)) == 0:
         a = draw(st.sampled_from(AFFIRM))
         return a, a
+    if draw(st.integers(0, 5)) == 0:
+        # "Ho ho" next to a negation: removing the laugh must leave every negation in place (S6 on the app path)
+        words = draw(st.lists(st.sampled_from(PLAIN_WORDS), min_size=1, max_size=5))
+        words.insert(draw(st.integers(0, len(words))), draw(st.sampled_from(NEG_WORDS)))
+        words.insert(draw(st.sampled_from([0, len(words)])), draw(st.sampled_from(HO_INLINE)))
+        return _finish(draw, words)
     words = draw(st.lists(st.sampled_from(PLAIN_WORDS), min_size=0, max_size=6))
     if draw(st.integers(0, 2)) == 0 or not words:
         words.insert(draw(st.integers(0, len(words))), draw(risky_phrase()))
     if draw(st.integers(0, 5)) == 0:
         words.insert(draw(st.sampled_from([0, len(words)])), draw(st.sampled_from(HO_INLINE)))
+    return _finish(draw, words)
+
+
+def _finish(draw, words):
+    """Markup, an emoji, a capital and an ending: (raw sentence, plain sentence)."""
     plain = list(words)
     styled = list(words)
     if draw(st.booleans()):
@@ -194,6 +206,9 @@ def test_the_strategy_reaches_every_safety_rule_and_the_fallback():
             stats["stop_or_fallback"] += 1
         if not allow_ho and spec.HO_RE.search(raw):
             stats["ho_removed"] += 1
+            # a spoken sentence that lost its "Ho ho" and holds a negation (what S6 checks on the app path)
+            if any(spec.HO_RE.search(s) and neg(s) and spec.strip_ho(s) in g.spoken for s in spec.split_clean(raw)):
+                stats["ho_negation_spoken"] += 1
         # stops that only the app's arguments cause: the child's name, and the gift-turn pronoun rules, each on its own
         if g.reason == "promise":
             if speech.filter_reply(raw, allow_ho, [], child_turn).reason != "promise":
@@ -213,6 +228,7 @@ def test_the_strategy_reaches_every_safety_rule_and_the_fallback():
     assert stats["needs_name"] / n >= 0.01, stats
     assert stats["needs_gift_turn"] / n >= 0.01, stats
     assert stats["ho_removed"] / n >= 0.1, stats
+    assert stats["ho_negation_spoken"] / n >= 0.03, stats
     assert 0.2 <= stats["gift_turn"] / n <= 0.8, stats
 
 
