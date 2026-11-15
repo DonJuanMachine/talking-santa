@@ -173,3 +173,25 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
   ever heard.
 - Gift-promise detection for pronoun answers ("I'll bring it!") depends on recognizing the child's request, so a
   request in an unusual wording may not trigger the pronoun rules.
+- Accepted gaps in the gift-promise and AI-claim filter (review findings P7-1, P4-1, P4-2, P4-3). The filter removes
+  known shapes of sentence; it is not exhaustive, and the persona prompt is the first line of defence. In these cases
+  the child hears the sentence in full:
+  - a toy that is not on the filter's gift list, named outright ("Yes! I'll bring you a tractor!");
+  - a request worded in a way the gift-turn check does not recognise ("A tractor!", "Will I get a tractor?", "I would
+    like a drone"), followed by "I'll bring it!", "Yes, I will!" or a bare "Yes!";
+  - a request made one turn earlier (the child asks for a pony, then says "Brown!", and Santa says "Yes! I'll bring
+    it!");
+  - a promise that ends in a tag question ("I'll bring it, okay?");
+  - three dots inside a sentence, or a dotted name, which splits it for the rules ("Santa will bring you... a pony!",
+    "Santa will bring you a L.O.L. doll!", "I am... an AI."), and a filler between commas ("I'm, um, a computer.");
+  - after a recognised gift request: agreement in other words ("You got it!", "Consider it done!"), the gift as the
+    subject ("It's on its way!"), the past tense ("That's right, I promised you a pony!") and another child's name
+    ("Wren will get a pony too!"; the name check is given the active child's names only).
+  - Over-block, the other way round: after a gift request, "I'll put it on my list!" and similar replies are stopped
+    as promises, so the child hears the fallback line instead.
+  - Basis: the owner ran `ai/gemma4:e4b` with persona v1 on 144 first-turn conversations (100 gift requests naming toys
+    that are not on the gift list, in three request shapes; 44 claims such as "You promised me a pony!" and a named
+    cousin). The model wrote 0 promise-like sentences, so 0 were heard; 0 model errors, 0 fallbacks. Requests made one
+    turn earlier and AI-claim wording were not part of this measurement.
+  - Every example sentence from the findings is a strict xfail in `tests/spec/test_accepted_gate_gaps.py`. When a gap
+    is fixed, its test fails, and this list must be updated.

@@ -52,7 +52,7 @@ untrusted devices.
 | Someone actively probing the server | A macOS alert on lockouts, rate limiting or unknown hosts. It offers to stop the server and never stops it by itself. | `tests/spec/test_alerts.py` |
 | Clickjacking | `frame-ancestors 'none'` and `X-Frame-Options: DENY` on every response, plus `nosniff` and `no-referrer` | `tests/spec/test_low_fixes.py` |
 | Prompt injection through stored memories | Remembered facts that read like instructions to Santa are blocked by a keyword check and never saved. Facts are single-line and limited to 100 characters. Facts typed by hand are not checked. | `tests/spec/test_low_fixes.py` |
-| Unsafe things said to a child | Every spoken sentence is checked by a word-pattern filter before it is spoken (gift promises, repeating addresses or phone numbers, scary words, Santa claiming to be an AI). The filter only removes text; its one addition is a fixed fallback line when nothing safe is left. The voice refuses text that has not been checked. The filter can miss unusual wording. | `tests/spec/` |
+| Unsafe things said to a child | The first line of defence is the persona prompt, which tells Santa never to promise a specific gift and never to discuss being an AI. Then every spoken sentence is checked by a word-pattern filter that removes known shapes (gift promises, repeating addresses or phone numbers, scary words, Santa claiming to be an AI). The filter only removes text; its one addition is a fixed fallback line when nothing safe is left. The voice refuses text that has not been checked. The filter is not exhaustive: it misses wording outside its patterns, and the known gaps are listed in CHANGELOG.md ("Known open items") and pinned in `tests/spec/test_accepted_gate_gaps.py`. | `tests/spec/` |
 | Denial of service | Request body, audio frame and open-connection caps; one call at a time. The safety patterns have timing tests for the shapes known to be slow. | `tests/spec/test_low_fixes.py`, `tests/spec/test_regex_timing.py` |
 | Path traversal | Static files are confined to their folder | `santa/web/server.py` |
 | Spoofed client address | Proxy headers are ignored (`X-Forwarded-For` cannot fake "this Mac") | `santa/web/__main__.py` |
@@ -61,9 +61,11 @@ untrusted devices.
 Most of these protections have regression tests. Path confinement, ignoring proxy headers and the 6-character PIN rule
 do not have a test of their own.
 
-**About the AI wording.** Santa is told to stay in character and not discuss being an AI or a computer with the
-children. The filter blocks sentences where he says he is an AI, robot, computer, chatbot, language model or a named AI
-product. It lets him say he is not a computer, and it does not catch every phrasing. An adult should be nearby.
+**About the AI wording.** The first line of defence is the persona prompt: Santa is told to stay in character and not
+discuss being an AI or a computer with the children. The filter is a pattern filter: it removes sentences in known
+shapes where he says he is an AI, robot, computer, chatbot, language model or a named AI product. It lets him say he is
+not a computer. It is not exhaustive: for example, "I am... an AI." (three dots in the middle) is spoken (CHANGELOG.md,
+"Known open items"). An adult should be nearby.
 
 **Privacy by design:**
 - The language model, speech recognition and voice run on this Mac. Santa's own code makes no network calls except to

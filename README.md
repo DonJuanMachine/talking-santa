@@ -19,11 +19,13 @@ mic -> VAD -> STT -> [ Santa brain: persona + memory + safety ] -> TTS -> speake
 - **The call page saves no audio and no transcripts.** It saves short facts about each registered child in
   `local/profiles.json`. The `--debug-audio` flag saves recordings, and the typed chat (`chat.py`) saves transcripts. See
   [Data and privacy](#data-and-privacy).
-- **Everything Santa says is checked by a word-pattern filter before it is spoken.** It blocks gift promises, repeating
-  addresses or phone numbers, scary words, threats about the naughty list, and Santa claiming to be an AI. Santa is told
-  to stay in character and not discuss being an AI or a computer with the children. The filter blocks sentences where
-  he says he is an AI, robot, computer, chatbot or a named AI product; it lets him say he is not a computer, and it does
-  not catch every phrasing. A filter can miss unusual wording, so an adult should be nearby.
+- **Everything Santa says is checked by a word-pattern filter before it is spoken.** The first line of defence is
+  Santa's instructions (the persona prompt in `santa/persona.py`): never promise a specific gift, stay in character and
+  never discuss being an AI or a computer with the children. The filter then removes sentences in known shapes: gift
+  promises, repeating addresses or phone numbers, scary words, threats about the naughty list, and Santa saying he is
+  an AI, robot, computer, chatbot or a named AI product. It lets him say he is not a computer. The filter is not
+  exhaustive: it misses wording outside its patterns, and the known gaps are listed in CHANGELOG.md ("Known open
+  items"). An adult should be nearby.
 - **Only this Mac can reach Santa by default.** `--network` adds HTTPS, a PIN, lockouts, a rate limit and a macOS alert
   with a Stop Santa button.
 - **You can see and delete what Santa remembers.** Open `local/profiles.json` to see it. **Forget last** on the call
@@ -344,7 +346,8 @@ call starts and one when it ends (with the reason).
 
 ## Known limits
 
-- The safety filter is pattern-based and can miss unusual wording; an adult should be nearby.
+- The safety filter removes known patterns only and is not exhaustive (known gaps: CHANGELOG.md, "Known open
+  items"). The persona prompt is the first line of defence; an adult should be nearby.
 - Santa can mix up children: the active child is chosen by a spoken name.
 - Speech recognition on children's voices is not measured.
 - Sad facts can still be stored; use Forget last or edit the file.
