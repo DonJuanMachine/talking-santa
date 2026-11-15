@@ -4,7 +4,6 @@ The prompt asks for it (persona.PROMPT_ADDITIONS) and the speech gate enforces i
 """
 import _support  # noqa: F401  (temp profiles; must come first)
 
-import time
 
 import numpy as np
 import pytest
@@ -43,10 +42,9 @@ def test_strip_ho(raw, out):
 
 
 def test_strip_ho_is_fast_on_long_input():
-    t = time.perf_counter()
-    spec.strip_ho("ho " * 10000 + "x")
-    spec.strip_ho("ho," * 10000)
-    assert time.perf_counter() - t < 0.5
+    from _timed import timed     # a child process, killed after a few seconds: a catastrophic pattern fails, not hangs
+    times = timed([("strip_ho", "ho " * 10000 + "x", {}), ("strip_ho", "ho," * 10000, {})])
+    assert sum(dt for dt, _ in times) < 0.5
 
 
 def test_santa_does_not_laugh_on_an_ordinary_turn():

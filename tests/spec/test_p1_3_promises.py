@@ -107,10 +107,9 @@ def test_p1_3a_two_sentence_promise_only_with_an_affirmative_and_for_you():
                                   "There will be " + "-" * 5000 + "x", "Yes! " + "big " * 3000 + "x",
                                   "Your " + "big " * 3000 + "x"])
 def test_p1_3a_new_patterns_stay_fast(text):
-    import time
-    t0 = time.perf_counter()
-    spec.safety_reason(text, names=("Emma",))
-    assert time.perf_counter() - t0 < 0.5
+    from _timed import timed     # a child process, killed after a few seconds: a catastrophic pattern fails, not hangs
+    (dt, _), = timed([("safety_reason", text, {"names": ["Emma"]})])
+    assert dt < 0.5
 
 
 @pytest.mark.parametrize("bad", ["The elves are making a doll for you!", "The elves are wrapping your new bike!",

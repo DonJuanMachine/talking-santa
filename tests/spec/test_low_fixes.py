@@ -2,7 +2,6 @@
 import _support  # noqa: F401  (temp profiles; must come first)
 
 import asyncio
-import time
 
 import numpy as np
 import pytest
@@ -112,9 +111,9 @@ def test_ordinary_facts_are_still_stored(fact):
 @pytest.mark.parametrize("text", ["I will bring " + "-" * 5000 + "x", "I promise " + "-" * 5000 + "x",
                                   "I'll give you " + "'" * 5000, "you will get " + "- " * 2000 + "truck"])
 def test_safety_patterns_stay_fast_on_long_runs_of_dashes(text):
-    t = time.perf_counter()
-    spec.safety_reason(text)
-    assert time.perf_counter() - t < 0.5
+    from _timed import timed     # a child process, killed after a few seconds: a catastrophic pattern fails, not hangs
+    (dt, _), = timed([("safety_reason", text, {})])
+    assert dt < 0.5
 
 
 def test_gift_promises_are_still_caught():

@@ -3,11 +3,13 @@
 The gift-promise rules read up to 12 words after a gift phrase. A joiner in "a-a-a" (or a'a'a) used to be readable as
 joining one word or as the gap between two, so the number of readings doubled with every unit: 2.9 s at 24 units, over
 15 s at 50. Words are now atomic (santa/spec.py `_words_then`). These tests use a generous bound so they do not flake:
-the old patterns needed seconds at n=24, the new ones need microseconds at n=60."""
-import time
+the old patterns needed seconds at n=24, the new ones need microseconds at n=60.
 
+The timing cases run in a child process that is killed after a few seconds (tests/spec/_timed.py, P7-6): a pattern
+that goes exponential again fails the test instead of hanging the suite. The bound is still checked per call."""
 import pytest
 
+from _timed import timed
 from santa import spec
 
 N = 60
@@ -34,20 +36,16 @@ def _shapes(n):
 
 @pytest.mark.parametrize("kw", KWARGS, ids=["plain", "name+gift_turn"])
 def test_repeated_units_after_every_phrase_finish_fast(kw):
-    slow = []
-    for text in _shapes(N):
-        t0 = time.perf_counter()
-        spec.safety_reason(text, **kw)
-        dt = time.perf_counter() - t0
-        if dt > BOUND_S:
-            slow.append((round(dt, 3), text[:40]))
+    texts = list(_shapes(N))
+    times = timed([("safety_reason", text, kw) for text in texts])
+    slow = [(round(dt, 3), text[:40]) for (dt, _), text in zip(times, texts) if dt > BOUND_S]
     assert not slow, slow[:5]
 
 
 def test_the_slow_shape_at_n_60_is_far_below_the_bound():
-    t0 = time.perf_counter()
-    assert spec.safety_reason("I will bring " + "a-" * N + "x") is None
-    assert time.perf_counter() - t0 < BOUND_S
+    (dt, verdict), = timed([("safety_reason", "I will bring " + "a-" * N + "x", {})])
+    assert verdict is None
+    assert dt < BOUND_S
 
 
 @pytest.mark.parametrize("text,expected", [

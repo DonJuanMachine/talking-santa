@@ -166,11 +166,9 @@ def test_p1_3b_gift_turn_output_is_a_prefix(raw, chunk):
 @pytest.mark.parametrize("text", ["Yes! " + "very " * 3000 + "x", "I'll " + "-" * 5000 + " it",
                                   "Yes, " + "I " * 3000 + "will", "You'll " + "big " * 3000 + "it"])
 def test_p1_3b_new_patterns_stay_fast(text):
-    import time
-    t0 = time.perf_counter()
-    spec.safety_reason(text, names=("Juniper",), gift_turn=True)
-    speech.is_gift_turn(text)
-    assert time.perf_counter() - t0 < 0.5
+    from _timed import timed     # a child process, killed after a few seconds: a catastrophic pattern fails, not hangs
+    times = timed([("safety_reason", text, {"names": ["Juniper"], "gift_turn": True}), ("is_gift_turn", text, {})])
+    assert sum(dt for dt, _ in times) < 0.5
 
 
 # ------------------------------------------------------------------ the app passes the child's words
