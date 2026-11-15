@@ -55,15 +55,45 @@ class State(str, Enum):
     HANGUP = "HANGUP"
 
 
+# A child introducing themself: "I'm X", "I am X", "my name is X", "this is X" (P4-4, owner decision), and "it's X"
+# ("hi santa it's jonathan", pinned by tests/review/test_memory.py). A name that merely appears in a sentence
+# ("Wren, wait your turn.", "tell Wren hi") is not an introduction.
+_INTRO = r"(?<![\w'-])(?:i['’]?m|i\s+am|my\s+name\s+is|this\s+is|it['’]s|it\s+is)\s+"
+
+
+def _spellings(names: list[str], aliases: dict[str, str] | None) -> list[tuple[str, str]]:
+    """(spelling, child) for every registered name and nickname."""
+    return [(n, n) for n in names] + list((aliases or {}).items())
+
+
+def _word(spelling: str) -> str:
+    return rf"{re.escape(spelling)}(?![\w'’-])"
+
+
+def mentioned_names(text: str, names: list[str], aliases: dict[str, str] | None = None) -> dict[str, int]:
+    """{child: how many times the name or a nickname is heard as a whole word or a possessive ("Wren's"),
+    case-insensitive} (heard ones only)."""
+    counts: dict[str, int] = {}
+    for spelling, child in _spellings(names, aliases):
+        c = len(re.findall(rf"(?<![\w'-]){re.escape(spelling)}(?:['’]s)?(?![\w'’-])", text, re.IGNORECASE))
+        if c:
+            counts[child] = counts.get(child, 0) + c
+    return counts
+
+
 def heard_name(text: str, names: list[str], aliases: dict[str, str] | None = None) -> str | None:
-    """A registered name (or nickname, via `aliases`) heard exactly once, as a whole word, case-insensitive, and no
-    other registered name."""
-    counts = {n: len(re.findall(rf"(?<![\w'-]){re.escape(n)}(?![\w'-])", text, re.IGNORECASE)) for n in names}
-    for nick, child in (aliases or {}).items():
-        counts[child] = counts.get(child, 0) + len(re.findall(rf"(?<![\w'-]){re.escape(nick)}(?![\w'-])", text, re.IGNORECASE))
-    hits = [n for n, c in counts.items() if c]
-    if len(hits) == 1 and counts[hits[0]] == 1:
-        return hits[0]
+    """The child who introduced themself ("I'm X", "my name is X", "this is X", "it's X"; X a registered name or
+    nickname), when that is the only registered name in the transcript and it is heard exactly once. Otherwise None:
+    a name that merely appears in a sentence does not change the speaker (P4-4)."""
+    counts = mentioned_names(text, names, aliases)
+    if len(counts) != 1:
+        return None
+    (child, c), = counts.items()
+    if c != 1:
+        return None
+    spellings = [s for s, ch in _spellings(names, aliases) if ch == child]
+    if any(re.search(_INTRO + _word(s), text, re.IGNORECASE) for s in spellings):
+        return child
     return None
 
 
@@ -480,13 +510,17 @@ class CallSession:
                 if ok:
                     await self.open_mic()
                 return
-            who = heard_name(tr.text, names, self.brain.aliases())
+            aliases = self.brain.aliases()
+            who = heard_name(tr.text, names, aliases)
             if who:
                 self.active = who
             speaker = self.active
             self.turn_speaker, self.forget_this_turn = speaker, False
             m["speaker_known"] = speaker is not None
-            await self._reply(tr.text, speaker, m, epoch)
+            # A turn that names another registered child is answered but not remembered: it may be a grown-up or a
+            # sibling talking, and its words must not become the active child's facts (P4-4).
+            other = any(c != speaker for c in mentioned_names(tr.text, names, aliases))
+            await self._reply(tr.text, speaker, m, epoch, remember=not other)
         except asyncio.CancelledError:
             pass
         except Exception as e:                  # never leave the call stuck in THINKING
@@ -496,7 +530,7 @@ class CallSession:
                 if await self.speak_canned("say_again", epoch):
                     await self.open_mic()
 
-    async def _reply(self, text: str, speaker, m: dict, epoch: int) -> None:
+    async def _reply(self, text: str, speaker, m: dict, epoch: int, remember: bool = True) -> None:
         loop = asyncio.get_running_loop()
         q: asyncio.Queue = asyncio.Queue()
         done = object()
@@ -573,7 +607,7 @@ class CallSession:
             self._emit_metrics(m, uid)
             forget = self.forget_this_turn       # Forget last pressed while Santa was answering this turn
             self.turn_speaker, self.forget_this_turn = None, False
-            if speaker and not info.cancelled and not forget:   # remember AFTER the reply was spoken; brain thread
+            if speaker and remember and not info.cancelled and not forget:   # AFTER the reply was spoken; brain thread
                 rf = self._run(self.w.brain, self.brain.remember, speaker, text)
                 rf.add_done_callback(_log_failure)
             await self.open_mic()
