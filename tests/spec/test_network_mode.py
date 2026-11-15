@@ -2,23 +2,34 @@
 the PIN, /status kept to this Mac, WebSocket origin check, one call at a time in network mode.
 
 Runs the real FastAPI app with the fake STT/TTS/VAD from the Stage H tests (no models, no model server).
+
+The network-mode app (`lan`, lan_app) is built by santa.web.__main__.main() itself, with uvicorn.run replaced by a
+recorder (tests/spec/_startup.py), so it passes the same start-up guards as a real `--network` start: a PIN of at
+least 6 characters, both certificate files, 0.0.0.0, TLS files and proxy_headers=False handed to uvicorn. The
+TestClient then talks to that app over plain HTTP (TLS is uvicorn's layer, which the recorder checks). The default-
+mode app (`local`, app_for) and the Gate unit tests still build directly: main() adds nothing to default mode but
+the 127.0.0.1 bind, which test_startup_guards.py checks, and the TestClient's Host ("testserver") has to be allowed
+by hand there, which main() never does.
 """
 import _support  # noqa: F401  (temp profiles; must come first)
 
 import copy
 import json
+from dataclasses import fields
 
 import pytest
 from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
+from _startup import GUARDED, cert_files, launch
 from _support import FakeClient
 from santa.web.access import Gate, host_name, origin_ok
 from santa.web.brain_adapter import SantaBrain
 from santa.web.server import create_app
+from santa.web.settings import Settings
 from test_stage_h import PROFILES, FakeSTT, FakeTTS, FakeVAD, fast_settings
 
-PIN = "4321"
+PIN = "432198"                      # main() refuses --network with a PIN shorter than 6 characters
 
 
 def app_for(alerter=None, **kw):
@@ -34,9 +45,32 @@ def local():
         yield c
 
 
+def lan_app(monkeypatch, tmp_path, pin=PIN):
+    """The app a real `python -m santa.web --network` start would serve, with the Stage H fakes and fast timings.
+    "testserver" plays the Mac's LAN name (the name devices use), so the TestClient's Host header is allowed."""
+    fast, default = fast_settings(), Settings()
+    timings = {f.name: getattr(fast, f.name) for f in fields(Settings)
+               if f.name not in GUARDED and getattr(fast, f.name) != getattr(default, f.name)}
+    engines = dict(brain=SantaBrain(client=FakeClient(), profiles=copy.deepcopy(PROFILES)), stt=FakeSTT(),
+                   tts=FakeTTS(), vad_factory=FakeVAD)
+    cert, key = cert_files(tmp_path)
+    (app, kw), = launch(monkeypatch, ["--network", "--cert", str(cert), "--key", str(key)], pin=pin,
+                        lan=("testserver",), engines=engines, overrides=timings)
+    assert kw["host"] == "0.0.0.0" and kw["ssl_certfile"] == str(cert) and kw["proxy_headers"] is False
+    return app
+
+
+WSS = "wss://testserver/ws"     # the page's socket on an https page; a relative "/ws" would go out as ws:// (no cookie)
+
+
+def lan_client(app, **kw):
+    """A LAN device. https, as on a real --network start: the unlock cookie is Secure there (cert_file is set)."""
+    return TestClient(app, base_url="https://testserver", **kw)
+
+
 @pytest.fixture
-def lan():
-    with TestClient(app_for(host="0.0.0.0", pin=PIN)) as c:   # the test client is not loopback: a LAN device
+def lan(monkeypatch, tmp_path):
+    with lan_client(lan_app(monkeypatch, tmp_path)) as c:   # the test client is not loopback: a LAN device
         yield c
 
 
@@ -97,7 +131,7 @@ def test_status_is_this_mac_only_in_network_mode(lan):
 
 
 def test_locked_websocket_is_closed_with_4401_and_no_names_are_sent(lan):
-    with lan.websocket_connect("/ws") as ws:
+    with lan.websocket_connect(WSS) as ws:
         with pytest.raises(WebSocketDisconnect) as e:
             ws.receive_json()
     assert e.value.code == 4401
@@ -109,9 +143,9 @@ def test_wrong_pin_is_refused_and_right_pin_unlocks(lan):
     r = lan.post("/unlock", data={"pin": PIN}, follow_redirects=False)
     assert r.status_code == 303
     cookie = r.headers["set-cookie"].lower()
-    assert "httponly" in cookie and "samesite=strict" in cookie
+    assert "httponly" in cookie and "samesite=strict" in cookie and "secure" in cookie
     assert 'id="big"' in lan.get("/").text
-    with lan.websocket_connect("/ws") as ws:
+    with lan.websocket_connect(WSS) as ws:
         assert ws.receive_json()["type"] == "state"
 
 
@@ -125,7 +159,7 @@ def test_too_many_wrong_pins_lock_the_device_out(lan):
 
 def test_only_one_call_at_a_time_in_network_mode(lan):
     lan.post("/unlock", data={"pin": PIN})
-    with lan.websocket_connect("/ws") as a, lan.websocket_connect("/ws") as b:
+    with lan.websocket_connect(WSS) as a, lan.websocket_connect(WSS) as b:
         read_state(a, want_idle=True)
         read_state(b, want_idle=True)
         a.send_json({"type": "call"})
@@ -229,9 +263,9 @@ def test_locked_devices_are_rate_limited_but_unlocked_ones_and_this_mac_are_not(
     assert lan.post("/unlock", data={"pin": PIN}).status_code == 200      # 1 counted request (then unlocked)
     for _ in range(15):
         assert lan.get("/").status_code == 200                           # unlocked: never counted
-    other = TestClient(lan.app)                                          # a second device, no cookie
+    other = lan_client(lan.app)                                          # a second device, no cookie
     codes = [other.get("/").status_code for _ in range(12)]
     assert codes.count(200) == 9 and codes[-1] == 429                    # 10 per minute in total, both devices
     assert other.get("/").headers.get("retry-after") == "60"
-    with TestClient(lan.app, client=("127.0.0.1", 50001)) as mac:
+    with lan_client(lan.app, client=("127.0.0.1", 50001)) as mac:
         assert mac.get("/").status_code == 200                           # this Mac is never limited

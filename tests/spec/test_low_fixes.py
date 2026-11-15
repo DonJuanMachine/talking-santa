@@ -14,13 +14,13 @@ from santa import memory, spec
 from santa.web import session as session_mod
 from santa.web.server import MAX_SESSIONS
 from santa.web.session import State, _uid
-from test_network_mode import PIN, app_for, read_state, read_until
+from test_network_mode import PIN, app_for, lan_app, lan_client, read_state, read_until
 from test_stage_h import FakeSTT, make, say, start_call, until, wait_state
 
 
 # ------------------------------------------------------------------------------- VULN-004: /unlock body is capped
-def test_unlock_refuses_a_huge_body_without_reading_it_all():
-    with TestClient(app_for(host="0.0.0.0", pin=PIN)) as c:
+def test_unlock_refuses_a_huge_body_without_reading_it_all(monkeypatch, tmp_path):
+    with lan_client(lan_app(monkeypatch, tmp_path)) as c:
         r = c.post("/unlock", content=b"pin=" + b"1" * 5000,
                    headers={"content-type": "application/x-www-form-urlencoded"})
         assert r.status_code == 413
@@ -37,8 +37,8 @@ def test_every_response_forbids_framing(path, host):
         assert r.headers["x-content-type-options"] == "nosniff"
 
 
-def test_locked_pages_forbid_framing_too():
-    with TestClient(app_for(host="0.0.0.0", pin=PIN)) as c:
+def test_locked_pages_forbid_framing_too(monkeypatch, tmp_path):
+    with lan_client(lan_app(monkeypatch, tmp_path)) as c:
         assert c.get("/").headers["x-frame-options"] == "DENY"                 # PIN page
 
 
