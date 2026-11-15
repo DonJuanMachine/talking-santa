@@ -114,7 +114,7 @@ def test_gap_p4_1_dots_split_an_ai_claim(reply, claim):
     assert claim not in say([("hi santa", reply)])
 
 
-# ==================== P4-2: other agreement, past tense, a sibling's name
+# ==================== P4-2: other agreement, the gift as the subject, past tense
 P4_2_GIFT_TURN = [
     # agreement that is not one of the eight listed words
     "You got it!", "You bet!", "Sure thing!", "Definitely!", "Certainly, Juniper!", "For sure!", "Consider it done!",
@@ -123,12 +123,11 @@ P4_2_GIFT_TURN = [
     "It will be under your tree on Christmas morning!", "It's on its way!", "I'll bring you a big one!",
     "I'll bring you a red one!", "I'll have one ready for you!", "I'll make sure of it!", "A pony it is!",
     "One pony, coming up!",
-    # another child in the room, by name
-    "Wren will get a pony too!", "And I'll bring Wren a truck!",
+    # (another child in the room, by name: fixed in fix round 1, now tests/spec/test_round1_names.py)
 ]
 
 
-@xfail("P4-2", "on a recognised gift turn, agreement in other words or a sibling's name is spoken")
+@xfail("P4-2", "on a recognised gift turn, agreement in other words or the gift as the subject is spoken")
 @pytest.mark.parametrize("reply", P4_2_GIFT_TURN)
 def test_gap_p4_2_gift_turn_other_words(reply):
     heard = say([(ASK, reply)])

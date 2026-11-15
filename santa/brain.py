@@ -205,12 +205,15 @@ class Santa:
         return messages, label, safe != text
 
     def _names(self, speaker: str | None) -> list[str]:
-        """The active child's name and registered nicknames, for the promise rule (P1-3: "I'll bring Emma a bike!")."""
-        if not speaker:
-            return []
-        p = self.profiles.get(speaker)
-        nicks = p.get("nicknames") if isinstance(p, dict) else None
-        return [speaker] + [n for n in (nicks or []) if isinstance(n, str)]
+        """Names for the promise rule (P1-3: "I'll bring Emma a bike!"): the active child's name and registered
+        nicknames first, then every other registered child's name, since a sibling may be in the room ("Wren will get
+        a pony too!", P4-2). Other children's nicknames are left out: a nickname can be an ordinary word."""
+        out: list[str] = []
+        if speaker:
+            p = self.profiles.get(speaker)
+            nicks = p.get("nicknames") if isinstance(p, dict) else None
+            out = [speaker] + [n for n in (nicks or []) if isinstance(n, str)]
+        return out + [str(n) for n in self.profiles if n != speaker]
 
     def _gift_key(self, speaker: str | None) -> str | None:
         """Registered children are tracked by name; everyone else shares one guest slot."""

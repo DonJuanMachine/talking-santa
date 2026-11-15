@@ -151,6 +151,9 @@ def test_p1_3a_brain_passes_the_active_childs_name_and_nicknames(reply, monkeypa
     assert s.last_reply.reason == "blocklist:promise"      # the Reply code for a promise stop (brain._reason_code)
 
 
-def test_p1_3a_brain_does_not_use_another_childs_name(monkeypatch, tmp_path):
+def test_p1_3a_brain_also_uses_the_other_registered_childrens_names(monkeypatch, tmp_path):
+    """Changed in fix round 1 (P4-2): this test used to pin that a promise naming another registered child was
+    spoken. The brain now gives the name rule every registered child's name, so it is stopped."""
     s = _santa("Hello there! I'll bring Juniper a bike!", monkeypatch, tmp_path)
-    assert s.reply("Leo", "hi santa") == "Hello there! I'll bring Juniper a bike!"
+    assert s.reply("Leo", "hi santa") == "Hello there! " + FB      # P1-2: FALLBACK follows a SAFETY stop
+    assert s.last_reply.reason == "blocklist:promise"
