@@ -81,10 +81,22 @@ def mentioned_names(text: str, names: list[str], aliases: dict[str, str] | None 
     return counts
 
 
-def heard_name(text: str, names: list[str], aliases: dict[str, str] | None = None) -> str | None:
+# Words that may surround a bare name answering "Who am I talking to?" ("Hi Santa, Juniper!"); fix round 1b.
+_BARE_FILLER = {"hi", "hello", "hey", "santa", "ho"}
+
+
+def _bare_words(text: str) -> list[str]:
+    """Lower-case words without punctuation and without the filler words."""
+    words = (w.strip("'’-") for w in re.findall(r"[\w'’-]+", text.lower()))
+    return [w for w in words if w and w not in _BARE_FILLER]
+
+
+def heard_name(text: str, names: list[str], aliases: dict[str, str] | None = None, bare_ok: bool = False) -> str | None:
     """The child who introduced themself ("I'm X", "my name is X", "this is X", "it's X"; X a registered name or
     nickname), when that is the only registered name in the transcript and it is heard exactly once. Otherwise None:
-    a name that merely appears in a sentence does not change the speaker (P4-4)."""
+    a name that merely appears in a sentence does not change the speaker (P4-4).
+    bare_ok (the caller passes it only while NO child is active, fix round 1b): a name or nickname that is the whole
+    utterance, apart from punctuation and hi/hello/hey/santa/ho ("Juniper!", "Hi Santa, Juniper"), also counts."""
     counts = mentioned_names(text, names, aliases)
     if len(counts) != 1:
         return None
@@ -93,6 +105,8 @@ def heard_name(text: str, names: list[str], aliases: dict[str, str] | None = Non
         return None
     spellings = [s for s, ch in _spellings(names, aliases) if ch == child]
     if any(re.search(_INTRO + _word(s), text, re.IGNORECASE) for s in spellings):
+        return child
+    if bare_ok and any(_bare_words(text) == _bare_words(s) for s in spellings):
         return child
     return None
 
@@ -511,7 +525,8 @@ class CallSession:
                     await self.open_mic()
                 return
             aliases = self.brain.aliases()
-            who = heard_name(tr.text, names, aliases)
+            # no child active yet (every Call starts so): a bare name answers the greeting (fix round 1b)
+            who = heard_name(tr.text, names, aliases, bare_ok=self.active is None)
             if who:
                 self.active = who
             speaker = self.active

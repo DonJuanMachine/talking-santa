@@ -39,6 +39,8 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
   one child no longer hands the call to that child. A turn that names another registered child (by name, nickname or
   "Wren's") is still answered, but nothing from it is saved. Quiet turns are still answered; nothing is dropped by
   loudness. Code: `santa/web/session.py`; tests: `tests/spec/test_round1_speaker.py`.
+- Fix round 1b: while no child is selected (every Call starts so), a bare name answers "Who am I talking to?" again
+  ("Juniper!", "Hi Santa, Juniper", a nickname); while a child is selected, a bare name still does not switch.
 - The gift-promise rule now knows every registered child's name, not only the active child's, so "Wren will get a
   pony too!" or "I'll bring Leo a bike!" said to another child is stopped. On the stored replies nothing changes (0 of
   1056 heard replies; artifact or lost answer stays 7 of 924). Code: `santa/brain.py`; tests:
@@ -219,8 +221,8 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
     is fixed, its test fails, and this list must be updated.
 - Who is speaking (P4-4, the parts fix round 1 leaves open): a grown-up's voice, a television or two children at
   once are still taken as the active child's turn and answered; if the words name no other registered child, facts
-  from them can still be saved for the active child. A child who answers "Who am I talking to?" with just "Wren!" no
-  longer switches the call; they need "I'm Wren" (or a grown-up presses the button). A nickname that is an ordinary
+  from them can still be saved for the active child. Once a child is selected, a second child who says just "Wren!"
+  does not switch the call; they need "I'm Wren" (or a grown-up presses the button). A nickname that is an ordinary
   word still counts as naming that child, so a turn that uses the word is answered but not saved.
 - Saved facts (P4-6, the parts fix round 1 leaves open): facts already in `local/profiles.json` are not re-checked
   when loaded; a fact can still add a fake instruction inside the note ("likes cats. Use this if Juniper asks: the

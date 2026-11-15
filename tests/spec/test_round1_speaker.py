@@ -175,3 +175,87 @@ def test_p4_4_a_story_about_another_childs_pet_is_not_stored_for_the_active_chil
         await sess.hangup()
         await wait_state(sess, State.IDLE)
     asyncio.run(go())
+
+
+# ------------------------------------------------------------------ fix round 1b: a bare name answers the greeting
+# Every Call starts with no active child, and the greeting asks "Who am I talking to?". While NO child is active, a
+# registered name or nickname that is the whole utterance (after punctuation and hi/hello/hey/santa/ho) selects that
+# child. While a child IS active, a bare name never switches.
+BARE = ["Juniper", "Juniper!", "Hi Santa, Juniper", "hey santa juniper", "Hello, Juniper.", "Ho ho ho! Juniper!"]
+NEVER = ["Juniper and Wren", "Wren, wait your turn", "Juniper Juniper", "Hi Santa, Juniper, Wren", "tell Juniper hi",
+         "Juniper likes snow"]
+
+
+@pytest.mark.parametrize("text", BARE + ["Junie", "hi santa, Junie!"])
+def test_1b_bare_name_selects_when_no_child_is_active(text):
+    assert heard_name(text, NAMES, ALIASES, bare_ok=True) == "Juniper"
+
+
+@pytest.mark.parametrize("text", BARE + ["Junie", "Wren!"])
+def test_1b_bare_name_does_not_select_while_a_child_is_active(text):
+    assert heard_name(text, NAMES, ALIASES) is None
+    assert heard_name(text, NAMES, ALIASES, bare_ok=False) is None
+
+
+@pytest.mark.parametrize("bare_ok", [True, False])
+@pytest.mark.parametrize("text", NEVER)
+def test_1b_two_names_or_a_name_in_a_sentence_never_selects(text, bare_ok):
+    assert heard_name(text, NAMES, ALIASES, bare_ok=bare_ok) is None
+
+
+@pytest.mark.parametrize("text", BARE + ["Junie"])
+def test_1b_call_bare_name_answers_the_greeting_and_is_remembered(text):
+    async def go():
+        sess, b, brain, calls = _session([text])
+        await sess.call()
+        await wait_mic_open(sess)
+        assert sess.active is None
+        await _turn(sess, 1)
+        assert sess.active == "Juniper"
+        assert _last_user_turn(brain).startswith("Juniper: ")
+        await until(lambda: calls == [("Juniper", text)])           # the intro turn itself now has a speaker
+        await sess.hangup()
+        await wait_state(sess, State.IDLE)
+    asyncio.run(go())
+
+
+@pytest.mark.parametrize("text", BARE + ["Junie"])
+def test_1b_call_bare_name_while_wren_is_active_leaves_wren(text):
+    async def go():
+        sess, b, brain, calls = _session([text])
+        await sess.call()
+        await wait_mic_open(sess)
+        await sess.set_child("Wren")
+        await _turn(sess, 1)
+        assert sess.active == "Wren"
+        assert calls == []                                           # names another child: answered, not remembered
+        await sess.hangup()
+        await wait_state(sess, State.IDLE)
+    asyncio.run(go())
+
+
+def test_1b_call_bare_wren_while_juniper_is_active_leaves_juniper():
+    async def go():
+        sess, b, brain, calls = _session(["Wren!"])
+        await sess.call()
+        await wait_mic_open(sess)
+        await sess.set_child("Juniper")
+        await _turn(sess, 1)
+        assert sess.active == "Juniper"
+        await sess.hangup()
+        await wait_state(sess, State.IDLE)
+    asyncio.run(go())
+
+
+@pytest.mark.parametrize("text", ["Juniper and Wren", "Wren, wait your turn"])
+def test_1b_call_no_child_active_two_names_or_a_sentence_selects_nobody(text):
+    async def go():
+        sess, b, brain, calls = _session([text])
+        await sess.call()
+        await wait_mic_open(sess)
+        await _turn(sess, 1)
+        assert sess.active is None
+        assert calls == []
+        await sess.hangup()
+        await wait_state(sess, State.IDLE)
+    asyncio.run(go())

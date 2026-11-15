@@ -104,8 +104,9 @@ the microphone and press Call. The server listens on `127.0.0.1` only, unless yo
 
 - Every Call starts as **Guest**. Santa switches to a child when the child introduces themself with their registered
   name or nickname ("I'm Wren", "my name is Wren", "this is Wren", "it's Wren"; exactly one name, once), or when a
-  grown-up presses that child's button. A name that only appears in a sentence ("Wren, wait your turn.") does not
-  switch, and nothing from a turn that names another registered child is saved.
+  grown-up presses that child's button. While no child is selected, a bare name also works ("Wren!", "Hi Santa,
+  Wren"). A name that only appears in a sentence ("Wren, wait your turn.") does not switch, and nothing from a turn
+  that names another registered child is saved.
 - **Forget last** removes the facts Santa saved from the selected child's most recent turn; a second press does nothing.
   It does not remove older facts or the *Last call* line (see below); edit `local/profiles.json` for those.
 - The **Timings** button shows per-turn latency (numbers only). `--verbose` logs the same numbers to the console.
