@@ -11,6 +11,8 @@ mic -> VAD -> STT -> [ Santa brain: persona + memory + safety ] -> TTS -> speake
 
 ## Is this OK for my kids?
 
+- **It is a hobby project.** One parent wrote it for young children, with an adult supervising every call. It is not
+  a product, and it comes with no warranty (see [LICENSE](LICENSE)).
 - **It runs on your Mac.** Speech recognition, the language model and the voice run on this Mac. Santa's own code makes
   no network calls except to the model server on this Mac (`localhost:12434` by default), and it keeps the
   speech-model loader offline however you start it, unless you set `HF_HUB_OFFLINE` yourself. If you point
@@ -25,7 +27,9 @@ mic -> VAD -> STT -> [ Santa brain: persona + memory + safety ] -> TTS -> speake
   promises, repeating addresses or phone numbers, scary words, threats about the naughty list, and Santa saying he is
   an AI, robot, computer, chatbot or a named AI product. It lets him say he is not a computer. The filter is not
   exhaustive: it misses wording outside its patterns, and the known gaps are listed in CHANGELOG.md ("Known open
-  items"). An adult should be nearby.
+  items", "Accepted gaps") and pinned as tests. Measured once with the default model on 182 short conversations
+  (one or two turns, `ai/gemma4:e4b`, persona v1) built to aim at those gaps, the model wrote 0 promise-like sentences
+  and 0 AI-ish words. That is a small sample from one model, not a guarantee. An adult should be nearby.
 - **Only this Mac can reach Santa by default.** `--network` adds HTTPS, a PIN, lockouts, a rate limit and a macOS alert
   with a Stop Santa button.
 - **You can see and delete what Santa remembers.** Open `local/profiles.json` to see it. **Forget last** on the call
