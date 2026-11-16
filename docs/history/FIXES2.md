@@ -131,5 +131,5 @@ diff -ruN -x .snapshots -x .git -x .venv -x __pycache__ -x results -x backup -x 
 Run the tests with the temp venv (outside the repo):
 
 ```
-PYTHONDONTWRITEBYTECODE=1 /private/tmp/claude-501/-Users-don-projects-talking-santa/c54cc2fe-efcb-41d9-a363-f45394210fa5/scratchpad/venv/bin/python -m pytest tests/review -p no:cacheprovider -rxX
+PYTHONDONTWRITEBYTECODE=1 <venv>/bin/python -m pytest tests/review -p no:cacheprovider -rxX
 ```
