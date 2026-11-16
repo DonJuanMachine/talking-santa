@@ -17,6 +17,9 @@ dist/
 .env
 .env.*
 !.env.example
+# Renamed settings copies and backups, in any folder (home.env, profiles.bak, santa.env.bak)
+*.env
+*.bak
 # Your personal files: settings + PIN, Santa's picture, children's profiles, certificates (see local.example/)
 /local/
 # Older locations, still ignored in case a copy is left there
@@ -34,6 +37,8 @@ profiles.json
 profiles.json.*
 transcripts/
 santa.env
+# The start script's log and PID folder belongs in local/run/; a stray top-level copy stays out too
+/run/
 
 # ---------------------------------------------------------------- Voice app (santa/web)
 santa/web/.cache/

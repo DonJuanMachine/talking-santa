@@ -16,6 +16,8 @@ IGNORED = [
     "x.m4a", "a/x.m4a", "x.log", "a/b/x.log", "x.sqlite", "a/x.sqlite", "x.db", "a/x.db",
     "santa.env", "cfg/santa.env",
     "local/profiles.json", ".env", ".env.local",
+    # P11-3: renamed settings copies, backups and a stray run/ folder outside local/
+    "home.env", "a/b/x.env", "x.bak", "santa/profiles.bak", "local.example/santa.env.bak", "run/server.pid",
 ]
 NOT_IGNORED = [
     "local.example/santa.env.example", "santa.env.example", ".env.example", "docs/x.md", "santa/ok.py",

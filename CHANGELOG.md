@@ -6,6 +6,9 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
 
 ## [Unreleased]
 
+### Public-release gate (pass 11)
+- `.gitignore` now also ignores `*.env`, `*.bak` and a top-level `run/` in any folder, so a renamed settings copy or a backup outside `local/` cannot be committed by accident. Test: `tests/review/test_gitignore_private.py`.
+
 ### Diagnostics
 - "Lost connection to Santa" now leaves a trail. The log gets a warning whenever a connection closes during a call (close
   code, state, call length, turns, how long the page had been quiet, how long the server and the model have been up), a
