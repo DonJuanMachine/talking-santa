@@ -10,6 +10,7 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
 - `.gitignore` now also ignores `*.env`, `*.bak` and a top-level `run/` in any folder, so a renamed settings copy or a backup outside `local/` cannot be committed by accident. Test: `tests/review/test_gitignore_private.py`.
 - Three development notes in `docs/history/` (FIXES, FIXES2, FIXES3) quoted a temporary path that held the macOS account name; it is now `<venv>`. A new test fails if any committed file holds an absolute home-folder path. Older commits still contain the path (see the public-release checklist). Test: `tests/review/test_no_home_paths.py`.
 - README: says up front that this is a hobby project for adults who supervise every call, and states the filter measurement basis (182 short conversations, `ai/gemma4:e4b`, persona v1) next to the "Accepted gaps" pointer. Blank GitHub issues are off, so every issue form shows the "never paste children's names or transcripts" warning. Test: `tests/review/test_public_readme.py`.
+- README: Pocket TTS has its own section with the install it needs (`pip install pocket-tts`, then the one-time file fetch); the one-time install never set it up, so `SANTA_TTS=pocket` failed for anyone following the docs. The start script's "See README (Pocket TTS)" message now points at a real section.
 
 ### Diagnostics
 - "Lost connection to Santa" now leaves a trail. The log gets a warning whenever a connection closes during a call (close

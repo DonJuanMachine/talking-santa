@@ -118,9 +118,8 @@ the microphone and press Call. The server listens on `127.0.0.1` only, unless yo
 
 What Santa does, and how to change it (set values in `local/santa.env`; see [Customize](#customize)):
 - **Voice:** Kokoro `am_michael` at 0.9 by default (`SANTA_VOICE`, `SANTA_SPEED`). A Kokoro blend is written as weighted
-  names, e.g. `SANTA_VOICE=am_santa:70,bm_fable:30`. To try Kyutai Pocket TTS instead, set `SANTA_TTS=pocket` (default
-  voice `peter_yearsley`; any built-in Pocket voice via `SANTA_VOICE`; no speed setting; the files are fetched once by
-  `tools/probes/j1_audition.py pocket-fetch`).
+  names, e.g. `SANTA_VOICE=am_santa:70,bm_fable:30`. Kyutai Pocket TTS is an alternative voice that needs an extra
+  install; see [Pocket TTS](#pocket-tts-optional).
 - **Listening:** `SANTA_EOS_MS` (end-of-speech wait, default 1200), `SANTA_EOS_EXTEND=0` (turn off the one-time
   extension to 1800 ms for short turns), `SANTA_STT_MODEL` (default `mlx-community/whisper-small.en-mlx`).
 - **Conversation arc** (asks each child's Christmas wish, then offers to say goodbye or to tell about the North Pole):
@@ -153,6 +152,19 @@ What Santa does, and how to change it (set values in `local/santa.env`; see [Cus
   Code: `santa/songs.py`.
 - **Output filter:** `SANTA_FILTER=legacy` switches to an alternative filter that repairs replies instead of only
   removing text (`santa/legacy/`). It is a fallback.
+
+### Pocket TTS (optional)
+
+Santa's default voice is Kokoro. Kyutai Pocket TTS is an alternative; the one-time install does not set it up. To try
+it (needs the internet once):
+```bash
+source ~/.venvs/talking-santa-h/bin/activate
+pip install pocket-tts==4.0.1                       # the version in requirements.lock; also installs torch
+python tools/probes/j1_audition.py pocket-fetch     # downloads the model and the built-in English voices
+```
+Then set `SANTA_TTS=pocket` in `local/santa.env` and restart Santa. The default Pocket voice is `peter_yearsley`; any
+built-in Pocket voice works in `SANTA_VOICE`; there is no speed setting. Santa loads it offline: it refuses to start
+Pocket TTS unless `HF_HUB_OFFLINE=1`, which Santa sets by default.
 
 ## Use on your home network
 
