@@ -39,8 +39,12 @@ Known limits are listed under [Known limits](#known-limits).
 
 ## What you need
 
-- An Apple silicon Mac (the voice app uses Apple's MLX for speech recognition), Python 3.12+, and Docker Desktop with
-  Model Runner.
+- An Apple silicon Mac (the voice app uses Apple's MLX for speech recognition).
+- Python 3.12. The install below runs `python3.12`; if `python3.12 --version` says "command not found", install it
+  with [Homebrew](https://brew.sh/): `brew install python@3.12`. A newer Python 3 may work in its place but is
+  untested.
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) with Model Runner (it serves the language model;
+  step 3 below turns it on).
 - The internet, once, for setup: pip, the Docker model pull and the model files. After that Santa runs without it.
 - Tested on: Apple M5, 32 GB, macOS 27.0.1, Python 3.12.13. Other versions are untested.
 

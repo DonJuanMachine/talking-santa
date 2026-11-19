@@ -17,8 +17,9 @@ made-up names such as Emma, Leo and Ziv, as the tests do.
 
 ## Development setup
 
-Requires macOS (Apple silicon for the voice app), Python 3.12+, and Docker Desktop with Model Runner. Tested on Apple M5,
-32 GB, macOS 27.0.1 and Python 3.12.13; other versions are untested.
+Requires macOS (Apple silicon for the voice app), Python 3.12 (`brew install python@3.12` if `python3.12` is missing),
+and Docker Desktop with Model Runner. Tested on Apple M5, 32 GB, macOS 27.0.1 and Python 3.12.13; other versions are
+untested.
 
 ```bash
 python3.12 -m venv ~/.venvs/talking-santa-h && source ~/.venvs/talking-santa-h/bin/activate
