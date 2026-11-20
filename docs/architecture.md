@@ -338,8 +338,8 @@ Every setting, with its default and effect, is in [configuration.md](configurati
   temporary `SANTA_LOCAL_DIR` and `SANTA_PROFILES`.
 - `evals/` is the toddler scenario benchmark (`python evals/bench.py gen <model>`, `judge`, `report`, or
   `evals/bench_all.sh`). It needs the model server running; see [model-selection.md](model-selection.md).
-- `tools/probes/` holds probes, benchmarks and live smoke tests; `tools/review/` and `tools/audit/` hold the evidence
-  scripts and experiments behind the reviews. None of them run under pytest, and the probes need the model and/or voice
+- `tools/probes/` holds probes, benchmarks and live smoke tests; `tools/review/` and `tools/audit/` hold the one-off
+  scripts behind the development notes in `docs/history/`. None of them run under pytest, and the probes need the model and/or voice
   stack running because they send real requests to the model server. Their outputs go to the gitignored
   `tools/probes/out/`.
 - In `tools/probes/smoke_live.py`, **recall** means a child's own remembered fact comes back when the child asks what

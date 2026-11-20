@@ -426,8 +426,8 @@ Layout:
 - `evals/` - toddler scenario benchmark (`bench.py`, `cases.json`, `personas/`, `results/`); `python evals/bench.py gen
   <model>` overwrites the result files in `evals/results/`
 - `tools/` - not run by pytest: `probes/` (probes, benchmarks and live smoke tests that need the model and/or voice
-  stack running; outputs go to the gitignored `tools/probes/out/`), `review/` and `audit/` (evidence scripts and
-  experiments behind the reviews)
+  stack running; outputs go to the gitignored `tools/probes/out/`), `review/` and `audit/` (one-off scripts
+  behind the development notes in `docs/history/`)
 - `scripts/` - `start-santa.sh`, `stop-santa.sh`, `run-web.sh`, `check_model.py` (smoke test), `install-git-hooks.sh` +
   `git-hooks/` (pre-commit hook), `security-scan.sh`
 - `docs/` - `architecture.md` (how it fits together, with diagrams), `configuration.md` (every setting), `model-selection.md` (why Gemma 4 e4b: benchmark method, data, results); `docs/history/` -
