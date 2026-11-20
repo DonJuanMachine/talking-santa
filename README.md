@@ -11,6 +11,13 @@ mic -> VAD -> STT -> [ Santa brain: persona + memory + safety ] -> TTS -> speake
 
 ## Is this OK for my kids?
 
+**Use at your own risk.** You are responsible for testing Santa's outputs to decide if this is appropriate for you.
+Santa's words come from a language model, which can say things that are wrong, odd or unsuitable for a child, and no
+filter catches everything. Talking Santa is provided "as is", without warranty of any kind, and the author is not
+liable for anything Santa says or for any harm or loss from using it; the full terms are in the [LICENSE](LICENSE). It
+is not a certified children's product and has not been independently tested for child safety. By using it, you accept
+these terms, and you agree that an adult stays in the room for every call.
+
 - **It is a hobby project.** One parent wrote it for young children, with an adult supervising every call. It is not
   a product, and it comes with no warranty (see [LICENSE](LICENSE)).
 - **It runs on your Mac.** Speech recognition, the language model and the voice run on this Mac. Santa's own code makes
