@@ -317,7 +317,8 @@ fixed hold line. When the page reports the playback ended, the brain saves new f
 
 ## 7. Models
 
-All four are open-weight models that run on this Mac. Each model's own page has its terms.
+The four default models and the optional Pocket TTS voice are open-weight models that run on this Mac. Each
+model's own page has its terms.
 
 | Role | Model | Developer | Source |
 |---|---|---|---|
@@ -325,10 +326,10 @@ All four are open-weight models that run on this Mac. Each model's own page has 
 | Speech recognition | Whisper small.en via mlx-whisper (the `mlx-community/whisper-small.en-mlx` conversion) | OpenAI | [openai/whisper](https://github.com/openai/whisper), [conversion](https://huggingface.co/mlx-community/whisper-small.en-mlx) |
 | Voice | Kokoro-82M v1.0 via kokoro-onnx | hexgrad | [hexgrad/Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) |
 | Voice activity | Silero VAD v5 | Silero team | [snakers4/silero-vad](https://github.com/snakers4/silero-vad) |
+| Voice, optional instead of Kokoro (`SANTA_TTS=pocket`; see [Pocket TTS](../README.md#pocket-tts-optional)) | Pocket TTS | Kyutai | [kyutai-labs/pocket-tts](https://github.com/kyutai-labs/pocket-tts) |
 
-License: see each model's page. For Gemma 4, Google's model card lists Apache 2.0. Optionally, Kyutai Pocket TTS can
-replace Kokoro (`SANTA_TTS=pocket`). Why Gemma 4 e4b and how the candidates were compared:
-[model-selection.md](model-selection.md).
+License: see each model's page. For Gemma 4, Google's model card lists Apache 2.0. Why Gemma 4 e4b and how the
+candidates were compared: [model-selection.md](model-selection.md).
 
 ## 8. Configuration
 Every setting, with its default and effect, is in [configuration.md](configuration.md).
