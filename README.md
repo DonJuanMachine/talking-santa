@@ -88,9 +88,12 @@ scripts/start-santa.sh --network    # other devices on your network too (see "Us
 scripts/stop-santa.sh               # stops Santa, frees the model's memory
 ```
 
-`start-santa.sh` checks Docker, Model Runner, the model, memory, the voice and, with `--network`, the PIN and
-certificates. For anything that is off it asks "y/N" and fixes it, then starts Santa in the background and opens the
-page. The log is `local/run/santa.log`. `stop-santa.sh` stops what the start script started.
+`start-santa.sh` checks Docker, Model Runner, the model, that no other model is using the memory, the voice setting
+(and the Pocket TTS files, if you chose Pocket TTS) and, with `--network`, the PIN and certificates. For anything that
+is off it asks "y/N" and fixes it, then starts Santa in the background and opens the page. It does not check the voice,
+voice-activity and speech-recognition files from step 2 of the install. A missing voice or speech-recognition file
+stops Santa at start, and the script prints the end of the log; a missing voice-activity file (`silero_vad.onnx`) only
+shows when the page opens: the page cannot connect to Santa, and the log shows the error. The log is `local/run/santa.log`. `stop-santa.sh` stops what the start script started.
 
 To run in a terminal instead: `scripts/run-web.sh` (add `--network` for the home network). It runs `python -m santa.web`
 kept awake with `caffeinate` and passes any flags through; press **Ctrl+C** to stop it. **Hang up** on the page only

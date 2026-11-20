@@ -349,8 +349,11 @@ Every setting, with its default and effect, is in [configuration.md](configurati
 - One large model at a time; run `docker model unload --all` before switching models.
 - **Startup checklist** (what `scripts/start-santa.sh` checks, in order): the Python environment, the settings in
   `local/santa.env`, Docker Desktop, Model Runner answering at the model URL, the model downloaded, no other model loaded
-  in memory, the voice (Kokoro files, or Pocket TTS files), with `--network` the PIN and certificates, and that the port
-  is free. For anything off it asks and fixes it.
+  in memory, the voice setting (and the Pocket TTS files when `SANTA_TTS=pocket`), with `--network` the PIN and
+  certificates, and that the port is free. For anything off it asks and fixes it. It does not check the Kokoro, Silero
+  VAD or Whisper files. Kokoro and Whisper load when the server starts, so a missing one stops it and the script prints
+  the end of the log; the Silero VAD model loads when a page connects (`server.py`, per WebSocket), so a missing file
+  passes the start script and the page cannot connect.
 - **Offline checklist:** the Kokoro model and voices, the Silero VAD file and the Whisper snapshot are on disk (see the
   README's one-time install), the language model is pulled, and Santa is started with a script or with
   `python -m santa.web` so the speech-model loader stays offline.

@@ -12,6 +12,7 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
 - README: says up front that this is a hobby project for adults who supervise every call, and states the filter measurement basis (182 short conversations, `ai/gemma4:e4b`, persona v1) next to the "Accepted gaps" pointer. Blank GitHub issues are off, so every issue form shows the "never paste children's names or transcripts" warning. Test: `tests/review/test_public_readme.py`.
 - README: Pocket TTS has its own section with the install it needs (`pip install pocket-tts`, then the one-time file fetch); the one-time install never set it up, so `SANTA_TTS=pocket` failed for anyone following the docs. The start script's "See README (Pocket TTS)" message now points at a real section.
 - README and CONTRIBUTING: the install runs `python3.12`, which a stock Mac does not have; "What you need" now says how to get it (`brew install python@3.12`) and links Docker Desktop.
+- README and architecture: the start script was said to check the voice files; it checks only the voice setting and, for Pocket TTS, its files. The docs now say the Kokoro, Silero and Whisper files are not checked and what happens if one is missing.
 
 ### Diagnostics
 - "Lost connection to Santa" now leaves a trail. The log gets a warning whenever a connection closes during a call (close
