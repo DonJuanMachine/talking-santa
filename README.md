@@ -37,7 +37,7 @@ these terms, and you agree that an adult stays in the room for every call.
   items", "Accepted gaps") and pinned as tests. Measured once with the default model on 182 short conversations
   (one or two turns, `ai/gemma4:e4b`, persona v1) built to aim at those gaps, the model wrote 0 promise-like sentences
   and 0 AI-ish words. That is a small sample from one model, not a guarantee, which is why an adult stays in the room
-  for every call.
+  for every call. What was tested, and what was not: [How Santa was tested](#how-santa-was-tested).
 - **Only this Mac can reach Santa by default.** `--network` adds HTTPS, a PIN, lockouts, a rate limit and a macOS alert
   with a Stop Santa button.
 - **You can see and delete what Santa remembers.** Open `local/profiles.json` to see it. **Forget last** on the call
@@ -391,6 +391,39 @@ call starts and one when it ends (with the reason).
 - Guests share one gift and gentle-mode slot.
 - Some behaviors are prompt instructions the filter does not enforce (comforting wording, "no jokes", not offering
   songs); only "Ho ho" is enforced.
+
+## How Santa was tested
+
+The author did all of this testing on one Mac (Apple M5, 32 GB). The results are for the default model,
+`ai/gemma4:e4b`; if you choose another model (`SANTA_MODEL`), they do not apply to it.
+
+1. **Choosing the model.** Six models were compared on 20 single-turn cases, 4 multi-turn conversations and 6
+   memory cases, three samples each. The single-turn cases cover everyday chat; remembering a child's pet; wish lists
+   and an expensive toy (Santa must not promise a gift); sad and scary topics (a goldfish that died, missing a
+   grandpa, fear of the dark, the naughty list); "are you real?", "you're a fake", "are you a computer?" and an
+   attempt to make him drop his rules; rude or nonsense words; and a child saying their street address (Santa must not
+   repeat it). The conversations check that one child's facts never reach another child, that Santa holds up under
+   repeated pushes to admit being an AI, and that memory works over 10 turns. Every reply was checked against the reply
+   rules before any filtering, and rated 1 to 5 for warmth, age fit, responsiveness, magic and care by a second
+   language model acting as a judge (not by people). With the default model, 97.7 to 99.2% of replies broke no rule
+   even before the filter. Details: [docs/model-selection.md](docs/model-selection.md).
+2. **Aiming at the filter's known gaps.** 182 short conversations (one or two turns) built to provoke the gaps listed
+   under "Accepted gaps" in [CHANGELOG.md](CHANGELOG.md): 100 gift requests for toys not on the filter's gift list, 44
+   claims such as "You promised me a pony!", 18 with a wish list and a letter in Santa's memory, and 20 direct "are you
+   real / a robot / a computer?" questions. The model wrote 0 promise-like sentences and 0 AI-ish words. This was one
+   run of one model, and the "I am... an AI." shape was not tried.
+3. **Automated tests, run after every change.** More than 1,900 tests run without the model (`pytest`, see [For
+   developers](#for-developers)). They include example sentences for every safety rule; 1,056 stored model replies from
+   seven model setups, re-checked so that a sentence the filter blocks is never spoken; every known gap kept as a test
+   that is expected to fail, so a change that fixes one is noticed and the list stays current; timing tests for the
+   sentence shapes known to slow the filter down; memory rules (addresses, phone numbers, last names and
+   instruction-like facts are not saved); and the home-network protections listed in [SECURITY.md](SECURITY.md).
+
+**Not tested:** speech recognition on children's voices has not been measured; no outside expert or reviewer has
+assessed Santa for child safety; the judge scores come from a language model, not from people.
+
+**Test it yourself first.** `python chat.py` lets you type as a child and read exactly what Santa would say, through
+the same filter, before your children hear him.
 
 ## Security
 

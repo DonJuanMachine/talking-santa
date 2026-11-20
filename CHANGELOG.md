@@ -21,6 +21,7 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
 - `tools/probes/j1_audition.py`, which the README's Pocket TTS section runs: its help text named a second, private virtual environment; it now says to use the project environment after `pip install pocket-tts`, as the README does. Comment change only. Test: `tests/review/test_pocket_tool_doc.py`.
 - README and architecture: the Models tables now list Pocket TTS (Kyutai), the optional voice, with a link to its page; they said "all four" models and left it out. Its terms are on that page, as for the other models. Test: `tests/review/test_models_table.py`.
 - README: "Is this OK for my kids?" opens with a use-at-your-own-risk disclaimer: you test Santa's outputs and decide whether it suits you, the software is provided as is with no warranty, the author is not liable, and an adult stays in the room for every call. Test: `tests/review/test_readme_disclaimer.py`.
+- README: new "How Santa was tested" section, linked from the filter bullet: the model benchmark (what the cases cover and how replies were scored), the 182 conversations aimed at the filter's known gaps, what the automated tests check, what was not tested, and how to try Santa yourself with `chat.py` first. Test: `tests/review/test_readme_testing_section.py` (every number is checked against its source).
 
 ### Diagnostics
 - "Lost connection to Santa" now leaves a trail. The log gets a warning whenever a connection closes during a call (close
