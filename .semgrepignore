@@ -18,3 +18,8 @@ notes/
 certs/
 tests/**/out/
 tools/**/out/
+
+# Test, probe and eval code is not shipped: scan the app (santa/, scripts/), not these
+tests/
+tools/
+evals/

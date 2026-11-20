@@ -83,7 +83,8 @@ def main(argv=None) -> None:
             sys.exit("--network needs an HTTPS certificate. Missing: " + ", ".join(missing) +
                      "\nMake one with mkcert (see README > \"Use on your home network\").")
         lan = tuple(n.lower() for n in _lan_names())     # system.local + Wi-Fi address: the names devices use
-        net = dict(host="0.0.0.0", pin=pin, cert_file=a.cert, key_file=a.key,
+        # --network is meant to listen on the LAN; the PIN, HTTPS and the Host allowlist guard it.
+        net = dict(host="0.0.0.0", pin=pin, cert_file=a.cert, key_file=a.key,  # nosec B104
                    allowed_hosts=("127.0.0.1", "localhost", "::1", *lan))
 
     logging.basicConfig(level=logging.INFO if a.verbose else logging.WARNING, format="%(asctime)s %(message)s")

@@ -40,7 +40,7 @@ SNYK_PY="$ROOT/.venv/bin/python"; [ -x "$SNYK_PY" ] || SNYK_PY=python3
 run snyk-deps  snyk test --file=requirements.txt --package-manager=pip --command="$SNYK_PY"
 
 # 3. Static analysis of own code
-run bandit   bandit -r . -x ./.venv,./tests,./tools,./evals,./.snapshots -ll
+run bandit   bandit -r . -x ./.venv,./tests,./tools,./evals,./.snapshots,./notes,./local,'./*_VULNHUNT_RESULTS_*' -ll
 run semgrep  semgrep --config auto --quiet --error .
 
 # 4. Broad sweep
