@@ -233,8 +233,9 @@ page files under `santa/web/static/` only need a browser reload; Python changes 
 
 **Your personal files go in `local/`.** Git ignores that folder, so your settings, PIN, picture, children's profiles
 and certificates are never committed; the code only knows the file names. Template and details:
-`local.example/README.md`. Settings go in `local/santa.env`, one `KEY=VALUE` per line (every option is listed in
-`local.example/santa.env.example`); a value set in your shell wins.
+`local.example/README.md`. Settings go in `local/santa.env`, one `KEY=VALUE` per line (the common ones are in the
+template `local.example/santa.env.example`; every setting is in [docs/configuration.md](docs/configuration.md)); a
+value set in your shell wins.
 
 **Santa's picture.** The call screen shows a drawn Santa (`santa/web/static/santa.svg`). To use your own picture, save
 it as `local/santa.jpg` (or `.png` / `.webp`; square works best, for example 800x800) and restart Santa. Remove it and
