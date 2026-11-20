@@ -18,6 +18,7 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
 - `scripts/check_model.py` told a user with no model to run `docker model pull ai/gemma3`, a model Santa does not use; it now names Santa's model (`SANTA_MODEL`, default `ai/gemma4:e4b`). Test: `tests/review/test_model_pull_hints.py`.
 - README: the "Layout" list now names everything at the top level (including `.github/`, `LICENSE`, `pyproject.toml`, the requirements files and `profiles.example.json`), every module in `santa/`, and every file and folder in `docs/` and `evals/`. Test: `tests/review/test_readme_repo_map.py`.
 - README said every setting is in `local.example/santa.env.example`; 24 are not. It now calls the template the common settings and points at `docs/configuration.md` for all of them, and so does the template's first comment. Test: `tests/review/test_settings_sources.py`.
+- `tools/probes/j1_audition.py`, which the README's Pocket TTS section runs: its help text named a second, private virtual environment; it now says to use the project environment after `pip install pocket-tts`, as the README does. Comment change only. Test: `tests/review/test_pocket_tool_doc.py`.
 
 ### Diagnostics
 - "Lost connection to Santa" now leaves a trail. The log gets a warning whenever a connection closes during a call (close

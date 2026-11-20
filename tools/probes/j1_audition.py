@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Stage J1: voice audition kit. Renders WAVs for Don to judge by ear, checks determinism, builds the audition page.
-Nothing here judges how a voice sounds.
+"""Stage J1: voice audition kit. Renders WAVs for a person to judge by ear, checks determinism, builds the audition
+page. Nothing here judges how a voice sounds.
 
-    j1_audition.py kokoro        Kokoro v1.0 (kokoro-onnx), run with the Stage H venv  ~/.venvs/talking-santa-h
-    j1_audition.py pocket-fetch  one-time download of Kyutai Pocket TTS files (network), venv ~/.venvs/talking-santa-j
-    j1_audition.py pocket        Kyutai Pocket TTS, offline (HF_HUB_OFFLINE=1), venv ~/.venvs/talking-santa-j
+    j1_audition.py kokoro        Kokoro v1.0 (kokoro-onnx), in the project venv (README: One-time install)
+    j1_audition.py pocket-fetch  one-time download of Kyutai Pocket TTS files (network), in the project venv after
+                                 `pip install pocket-tts` (README: Pocket TTS)
+    j1_audition.py pocket        Kyutai Pocket TTS, offline (HF_HUB_OFFLINE=1), same venv
     j1_audition.py page          builds tools/probes/out/voice_audition_J/index.html from the two manifests (any python)
 
 Output: tools/probes/out/voice_audition_J/ (gitignored): <engine>/<folder>/<file>.wav, manifest_<engine>.json,
