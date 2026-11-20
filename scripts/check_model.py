@@ -21,7 +21,7 @@ def main() -> None:
     except Exception as e:
         sys.exit(f"Cannot reach {config.BASE_URL}\n  {e}\n"
                  "Start Docker Desktop and enable Settings > Model Runner > host-side TCP.")
-    print("Models available:", ", ".join(available) or "none (docker model pull ai/gemma3)")
+    print("Models available:", ", ".join(available) or f"none (docker model pull {config.MODEL})")
 
     for model in sys.argv[1:] or [config.MODEL]:
         t0 = time.time()
