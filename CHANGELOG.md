@@ -16,6 +16,7 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
 - CHANGELOG, README and architecture no longer point at notes that are not published: the "Known open items" are described in plain words instead of review codes, and the pointer to a private release checklist is gone. Test: `tests/review/test_public_docs_self_contained.py`.
 - README, SECURITY and architecture state the supervision requirement one way, "an adult stays in the room for every call"; the README's first sentence used to say only that an adult "should be nearby". Test: `tests/review/test_supervision_wording.py`.
 - `scripts/check_model.py` told a user with no model to run `docker model pull ai/gemma3`, a model Santa does not use; it now names Santa's model (`SANTA_MODEL`, default `ai/gemma4:e4b`). Test: `tests/review/test_model_pull_hints.py`.
+- README: the "Layout" list now names everything at the top level (including `.github/`, `LICENSE`, `pyproject.toml`, the requirements files and `profiles.example.json`), every module in `santa/`, and every file and folder in `docs/` and `evals/`. Test: `tests/review/test_readme_repo_map.py`.
 
 ### Diagnostics
 - "Lost connection to Santa" now leaves a trail. The log gets a warning whenever a connection closes during a call (close

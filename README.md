@@ -418,23 +418,34 @@ also run JavaScript tests when Node.js is installed.
 Layout:
 - `santa/` - the core: `brain.py` (history + memory + reply, reused by the voice page), `persona.py` (system prompt),
   `spec.py` (every reply rule), `speech.py` (remove-only streaming filter), `safety.py` (wrapper for callers of the
-  filter), `memory.py` (per-child facts in `local/profiles.json`), `local.py` (finds your files in `local/`), plus
-  `arc.py`, `cues.py`, `gifts.py`, `songs.py`
-  - `santa/web/` - the call page: VAD + end of speech, Whisper STT, Kokoro TTS, call state machine (uses the brain unchanged)
+  filter), `memory.py` (per-child facts in `local/profiles.json`), `local.py` (finds your files in `local/`),
+  `config.py` (model and memory settings, read from the environment), plus `arc.py`, `cues.py`, `gifts.py`, `songs.py`
+  - `santa/web/` - the call page: voice activity detection and end of speech, Whisper speech recognition, Kokoro
+    voice, call state machine (uses the brain unchanged); the page itself is in `santa/web/static/`
   - `santa/legacy/` - the alternative output filter (`SANTA_FILTER=legacy`)
 - `chat.py` - typed chat
+- `profiles.example.json` - example children's profiles (made-up names); copy it to `local/profiles.json`
+- `local.example/` - template for your personal `local/` folder
 - `tests/` - pytest suites (`spec/`, `review/`)
-- `evals/` - toddler scenario benchmark (`bench.py`, `cases.json`, `personas/`, `results/`); `python evals/bench.py gen
-  <model>` overwrites the result files in `evals/results/`
+- `evals/` - toddler scenario benchmark, which needs the model server: `bench.py` and `bench_all.sh` (the benchmark),
+  `cases.json` (test cases), `personas/` (prompt variants), `results/` (raw results), `MANIFEST.json` (which code and
+  prompt made the results), `bench_report.md` (the final comparison), and earlier reports kept for the record
+  (`bench_report_run1_defaultctx.md`, `report-gemma4.md`, `report-ministral8b.md`). `python evals/bench.py gen <model>`
+  overwrites the result files in `evals/results/`
 - `tools/` - not run by pytest: `probes/` (probes, benchmarks and live smoke tests that need the model and/or voice
   stack running; outputs go to the gitignored `tools/probes/out/`), `review/` and `audit/` (one-off scripts
   behind the development notes in `docs/history/`)
 - `scripts/` - `start-santa.sh`, `stop-santa.sh`, `run-web.sh`, `check_model.py` (smoke test), `install-git-hooks.sh` +
   `git-hooks/` (pre-commit hook), `security-scan.sh`
-- `docs/` - `architecture.md` (how it fits together, with diagrams), `configuration.md` (every setting), `model-selection.md` (why Gemma 4 e4b: benchmark method, data, results); `docs/history/` -
-  design notes, audit and review write-ups. `CHANGELOG.md` - what changed. `SECURITY.md` - security policy and model.
-  `CONTRIBUTING.md` - how to report bugs and contribute
-- `local.example/` - template for your personal `local/` folder
+- `docs/` - `architecture.md` (how it fits together, with diagrams), `configuration.md` (every setting),
+  `model-selection.md` (why Gemma 4 e4b: benchmark method, data, results), `images/` (the screenshot above);
+  `docs/history/` - the development log (design notes, audit and review write-ups), a record rather than instructions
+- `CHANGELOG.md` - what changed. `SECURITY.md` - security policy and threat model. `CONTRIBUTING.md` - how to report
+  bugs and contribute. `LICENSE` - MIT
+- `pyproject.toml` - the package and its dependencies (`pip install -e ".[web,dev]"`); `requirements.lock` - the exact
+  versions that run (below); `requirements.txt` - the one core dependency, kept for the security scan and Dependabot
+- `.github/` - issue and pull-request forms, Dependabot settings; `.gitignore` and `.semgrepignore` - what git and
+  Semgrep skip; `.claude/` - settings for Claude Code users that keep it from reading private files
 
 ### Regenerate requirements.lock
 `requirements.lock` is a `pip freeze` of the environment that actually runs Santa (web and voice stack included).
