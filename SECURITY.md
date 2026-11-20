@@ -35,7 +35,7 @@ The project has no tagged releases. Fixes go to the `main` branch only.
 - With `--network`, other devices can connect from any network this Mac is on (Wi-Fi, Ethernet, VPN). They need HTTPS
   and a PIN. Do not use it on untrusted networks.
 
-**What it assumes:** an adult is in the room during calls, and the home network is not hostile, though it may hold
+**What it assumes:** an adult stays in the room for every call, and the home network is not hostile, though it may hold
 untrusted devices.
 
 **Out of scope:**
@@ -65,7 +65,7 @@ do not have a test of their own.
 discuss being an AI or a computer with the children. The filter is a pattern filter: it removes sentences in known
 shapes where he says he is an AI, robot, computer, chatbot, language model or a named AI product. It lets him say he is
 not a computer. It is not exhaustive: for example, "I am... an AI." (three dots in the middle) is spoken (CHANGELOG.md,
-"Known open items"). An adult should be nearby.
+"Known open items"). That is why an adult stays in the room for every call.
 
 **Privacy by design:**
 - The language model, speech recognition and voice run on this Mac. Santa's own code makes no network calls except to

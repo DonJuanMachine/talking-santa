@@ -7,7 +7,7 @@ behavior is in the [README](../README.md). Do not put children's names or any pr
 
 ## 1. Purpose and constraints
 
-- A talking Santa for young children, ages 2 to 5, that runs on one Mac, always used with an adult in the room.
+- A talking Santa for young children, ages 2 to 5, that runs on one Mac; an adult stays in the room for every call.
 - Hard constraints: Santa's own code makes no network calls at runtime except to the model server on the same Mac;
   child safety before everything else; Santa must not feel slow. The models are open-weight models that run locally.
 - Non-goals: cloud use, accounts, barge-in (talking over Santa), and exposing the server to the internet (do not forward
@@ -153,7 +153,8 @@ paths above and anything the rules flag.
 **What the filter does not do:** judge meaning or tone; catch wording outside its patterns; stop Santa from *asking* for
 private details (only the prompt forbids it); enforce prompt-only rules (comforting wording, "no jokes", not offering
 songs, how many questions); check facts typed by hand. The child's own words are not filtered for speech, but addresses
-and phone numbers in them are replaced before the model sees them and are never saved. An adult should be nearby.
+and phone numbers in them are replaced before the model sees them and are never saved. That is why an adult stays in the
+room for every call.
 
 ### 3.3 Memory
 - **Stored** in `local/profiles.json` (text only): per child, `age`, `facts`, `nicknames`, `family`, and at most one

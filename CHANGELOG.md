@@ -14,6 +14,7 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
 - README and CONTRIBUTING: the install runs `python3.12`, which a stock Mac does not have; "What you need" now says how to get it (`brew install python@3.12`) and links Docker Desktop.
 - README and architecture: the start script was said to check the voice files; it checks only the voice setting and, for Pocket TTS, its files. The docs now say the Kokoro, Silero and Whisper files are not checked and what happens if one is missing.
 - CHANGELOG, README and architecture no longer point at notes that are not published: the "Known open items" are described in plain words instead of review codes, and the pointer to a private release checklist is gone. Test: `tests/review/test_public_docs_self_contained.py`.
+- README, SECURITY and architecture state the supervision requirement one way, "an adult stays in the room for every call"; the README's first sentence used to say only that an adult "should be nearby". Test: `tests/review/test_supervision_wording.py`.
 
 ### Diagnostics
 - "Lost connection to Santa" now leaves a trail. The log gets a warning whenever a connection closes during a call (close

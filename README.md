@@ -3,7 +3,7 @@
 <img src="docs/images/call-page.jpg" width="640" alt="The call page: a Santa picture in a circle, the name Santa Claus and a green Call button">
 
 A talking Santa for young children, ages 2 to 5, that runs on one Mac. Speech recognition, the language model and the
-voice all run locally, and an adult should be nearby.
+voice all run locally, and an adult stays in the room for every call.
 
 ```
 mic -> VAD -> STT -> [ Santa brain: persona + memory + safety ] -> TTS -> speaker
@@ -29,7 +29,8 @@ mic -> VAD -> STT -> [ Santa brain: persona + memory + safety ] -> TTS -> speake
   exhaustive: it misses wording outside its patterns, and the known gaps are listed in CHANGELOG.md ("Known open
   items", "Accepted gaps") and pinned as tests. Measured once with the default model on 182 short conversations
   (one or two turns, `ai/gemma4:e4b`, persona v1) built to aim at those gaps, the model wrote 0 promise-like sentences
-  and 0 AI-ish words. That is a small sample from one model, not a guarantee. An adult should be nearby.
+  and 0 AI-ish words. That is a small sample from one model, not a guarantee, which is why an adult stays in the room
+  for every call.
 - **Only this Mac can reach Santa by default.** `--network` adds HTTPS, a PIN, lockouts, a rate limit and a macOS alert
   with a Stop Santa button.
 - **You can see and delete what Santa remembers.** Open `local/profiles.json` to see it. **Forget last** on the call
@@ -373,7 +374,7 @@ call starts and one when it ends (with the reason).
 ## Known limits
 
 - The safety filter removes known patterns only and is not exhaustive (known gaps: CHANGELOG.md, "Known open
-  items"). The persona prompt is the first line of defence; an adult should be nearby.
+  items"). The persona prompt is the first line of defence; an adult stays in the room for every call.
 - Santa can mix up children: any voice near the microphone (a grown-up, a television, two children at once) is
   taken as the active child's turn.
 - Speech recognition on children's voices is not measured.
