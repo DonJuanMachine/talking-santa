@@ -28,16 +28,16 @@ these terms, and you agree that an adult stays in the room for every call.
 - **The call page saves no audio and no transcripts.** It saves short facts about each registered child in
   `local/profiles.json`. The `--debug-audio` flag saves recordings, and the typed chat (`chat.py`) saves transcripts. See
   [Data and privacy](#data-and-privacy).
-- **Everything Santa says is checked by a word-pattern filter before it is spoken.** The first line of defence is
-  Santa's instructions (the persona prompt in `santa/persona.py`): never promise a specific gift, stay in character and
-  never discuss being an AI or a computer with the children. The filter then removes sentences in known shapes: gift
-  promises, repeating addresses or phone numbers, scary words, threats about the naughty list, and Santa saying he is
-  an AI, robot, computer, chatbot or a named AI product. It lets him say he is not a computer. The filter is not
-  exhaustive: it misses wording outside its patterns, and the known gaps are listed in CHANGELOG.md ("Known open
-  items", "Accepted gaps") and pinned as tests. Measured once with the default model on 182 short conversations
-  (one or two turns, `ai/gemma4:e4b`, persona v1) built to aim at those gaps, the model wrote 0 promise-like sentences
-  and 0 AI-ish words. That is a small sample from one model, not a guarantee, which is why an adult stays in the room
-  for every call. What was tested, and what was not: [How Santa was tested](#how-santa-was-tested).
+- **Everything Santa says is checked by a word-pattern filter before it is spoken.** For more information on how Santa
+  was tested, and what was not, see [How Santa was tested](#how-santa-was-tested). The first line of defence is Santa's
+  instructions (the persona prompt in `santa/persona.py`): never promise a specific gift, stay in character and never
+  discuss being an AI or a computer with the children. The filter then removes sentences in known shapes: gift promises,
+  repeating addresses or phone numbers, scary words, threats about the naughty list, and Santa saying he is an AI,
+  robot, computer, chatbot or a named AI product. It lets him say he is not a computer. The filter is not exhaustive: it
+  misses wording outside its patterns, and the known gaps are listed in CHANGELOG.md ("Known open items", "Accepted
+  gaps") and pinned as tests. Measured once with the default model on 182 short conversations (one or two turns,
+  `ai/gemma4:e4b`, persona v1) built to aim at those gaps, the model wrote 0 promise-like sentences and 0 AI-ish words.
+  That is a small sample from one model, not a guarantee, which is why an adult stays in the room for every call.
 - **Only this Mac can reach Santa by default.** `--network` adds HTTPS, a PIN, lockouts, a rate limit and a macOS alert
   with a Stop Santa button.
 - **You can see and delete what Santa remembers.** Open `local/profiles.json` to see it. **Forget last** on the call
