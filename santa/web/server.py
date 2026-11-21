@@ -201,7 +201,7 @@ def create_app(settings: Settings | None = None, alerter: Alerter | None = None,
         try:
             p = (STATIC / name).resolve()
             found = p.parent == STATIC.resolve() and p.is_file()
-        except ValueError:                                # a NUL byte in the name (%00): not found (VULN-019)
+        except (ValueError, OSError):                     # a NUL byte (%00) or a name too long: not found (VULN-019)
             found = False
         if not found:
             return HTMLResponse("not found", status_code=404)

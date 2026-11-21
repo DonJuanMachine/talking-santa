@@ -4,7 +4,8 @@ An unhandled exception makes uvicorn write a full traceback to the log for each 
 server can grow the log at will, and it skips the normal answer.
 
 - VULN-021: an Origin that urlsplit cannot parse (`http://[`) made origin_ok raise before the PIN check.
-- VULN-019: `/static/%00` made Path.resolve raise "embedded null character" (a 5 KB traceback per request).
+- VULN-019: `/static/%00` made Path.resolve raise "embedded null character" (a 5 KB traceback per request), and on
+  Python 3.12 a name over 255 characters made Path.is_file raise OSError.
 - VULN-020: deeply nested JSON on the WebSocket raised RecursionError (sooner on CPython 3.12), which escaped `except ValueError`
   and ended the call page's socket with a traceback.
 """
@@ -73,3 +74,12 @@ def test_a_recursion_error_from_the_json_parser_is_ignored_too(monkeypatch, loca
         ws.send_text(DEEP)
         ws.send_json({"type": "hello"})
         assert read_until(ws, "state")
+
+
+@pytest.mark.parametrize("name", ["A" * 300, "x" * 256 + ".js"])
+def test_a_static_name_too_long_for_the_file_system_is_not_found(name):
+    """Fix-verify follow-up to VULN-019: on Python 3.12 (the documented runtime) Path.is_file() raises OSError
+    (ENAMETOOLONG) for a name over 255 characters, which the NUL-byte fix did not catch."""
+    with TestClient(app_for()) as c:
+        r = c.get(f"/static/{name}")
+    assert r.status_code == 404
