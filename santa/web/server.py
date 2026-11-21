@@ -262,7 +262,7 @@ def create_app(settings: Settings | None = None, alerter: Alerter | None = None,
                 elif msg.get("text") is not None:
                     try:
                         data = json.loads(msg["text"])
-                    except ValueError:
+                    except (ValueError, RecursionError):  # bad or deeply nested JSON: ignore it (VULN-020)
                         continue
                     if isinstance(data, dict):
                         if data.get("type") == "call" and any(       # one call at a time, every mode
