@@ -85,7 +85,7 @@ The model timeouts (`SANTA_TIMEOUT`, `SANTA_WARMUP_TIMEOUT`, `SANTA_WARMUP_RETRY
 | Setting | Default | What it does |
 |---|---|---|
 | `SANTA_PIN` | none | The PIN other devices must enter with `--network`: at least 6 characters, for example `SANTA_PIN=<your PIN>`. This Mac never has to enter it. |
-| `SANTA_GATE_LIMIT` | `10` | PIN tries per minute from devices that have not entered the PIN, all together (at most 5 from any one device). |
+| `SANTA_GATE_LIMIT` | `10` | PIN tries per minute from devices that have not entered the PIN, all together (at most 5 from any one address). |
 | `SANTA_ALLOWED_HOSTS` | none | Extra names the server answers to, comma-separated (for example a router DNS name). |
 | `SANTA_ALERTS` | `1` (on) | The macOS security alert with a Stop Santa button. `0` turns it off. |
 
