@@ -194,8 +194,12 @@ def create_app(settings: Settings | None = None, alerter: Alerter | None = None,
 
     @app.get("/static/{name}")
     async def static(name: str):
-        p = (STATIC / name).resolve()
-        if p.parent != STATIC.resolve() or not p.is_file():
+        try:
+            p = (STATIC / name).resolve()
+            found = p.parent == STATIC.resolve() and p.is_file()
+        except ValueError:                                # a NUL byte in the name (%00): not found (VULN-019)
+            found = False
+        if not found:
             return HTMLResponse("not found", status_code=404)
         return FileResponse(p)
 
