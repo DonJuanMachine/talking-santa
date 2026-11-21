@@ -224,7 +224,8 @@ What changes in this mode:
   while (each address is locked out after 5 wrong tries, and the alert below shows it); a PIN guesser using many
   addresses is held to the shared rate.
 - One call at a time (in every mode): a second page that presses Call hears nothing and sees "Santa is on another
-  call". At most 4 Santa pages can be open at once.
+  call". At most 4 Santa pages can be open at once (several connecting at the same moment can get past this; see
+  [Known limits](#known-limits)).
 - Security alert (macOS only, on by default in every mode; `SANTA_ALERTS=0` turns it off): a PIN lockout, the rate limit
   tripping, or a request for an unknown name pops up a dialog on this Mac with **Stop Santa** / **Keep Running**. It
   defaults to Keep Running and closes by itself after 5 minutes; Santa is never stopped automatically, so bad requests
@@ -398,6 +399,11 @@ call starts and one when it ends (with the reason).
 - Speech recognition on children's voices is not measured.
 - Sad facts can still be stored; use Forget last or edit the file.
 - Forget last does not remove the *Last call* line, older facts or hand-typed facts.
+- Forget last pressed while Santa is still working out what the child said removes the facts from the turn before and
+  keeps the current turn's. Press it after Santa answers.
+- Some server limits can be pushed past (CHANGELOG.md, "Known open items"): a page that has the PIN, or a program on
+  this Mac, can open more than 4 call pages by connecting several at the same moment; and requests for an unknown name
+  or malformed requests each add a line to the log, unthrottled.
 - Guests share one gift and gentle-mode slot.
 - Some behaviors are prompt instructions the filter does not enforce (comforting wording, "no jokes", not offering
   songs); only "Ho ho" is enforced.
@@ -445,7 +451,8 @@ Built for small children, so privacy and safety come first. The short version; d
 - **Local only unless you choose otherwise.** The server listens on `127.0.0.1`. `--network` adds HTTPS, a PIN,
   escalating lockouts, a rate limit and a macOS alert with a Stop Santa button.
 - **Protections** against DNS rebinding, cross-site WebSocket hijacking, clickjacking, PIN brute force, prompt
-  injection through stored memories, and request-flooding denial of service. Most protections have regression tests.
+  injection through stored memories, and request-flooding denial of service (with the exceptions under
+  [Known limits](#known-limits)). Most protections have regression tests.
   The safety patterns have timing tests for the shapes known to be slow.
 - **Checked.** A pre-commit hook (install it with `scripts/install-git-hooks.sh`) blocks private files and secrets; it
   can be skipped with `git commit --no-verify`. `scripts/security-scan.sh` runs gitleaks, pip-audit (on
