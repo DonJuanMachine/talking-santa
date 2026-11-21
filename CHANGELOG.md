@@ -7,7 +7,7 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
 ## [Unreleased]
 
 ### Built-in Santa picture
-- The call screen's built-in picture is now a painted Santa (`santa/web/static/santa-default.jpg`, 1000x1000) instead of the drawn SVG, which is removed. Your own `local/santa.*` and the older `static/santa.jpg` still come first. The README screenshot is retaken with it. The painting was made by the project owner with an AI image tool and is marked CC0 1.0 (no copyright claimed, any rights waived), separate from the MIT licence of the code. Test: `tests/spec/test_local_dir.py`.
+- The call screen's built-in picture is now a painted Santa (`santa/web/static/santa-default.jpg`, 1000x1000) instead of the drawn SVG, which is removed. Your own `local/santa.*` and the older `static/santa.jpg` still come first. The README screenshot is retaken with it. The painting was made by the project owner with an AI image tool and is marked CC0 1.0 (no copyright claimed, any rights waived), separate from the MIT license of the code. Test: `tests/spec/test_local_dir.py`.
 
 ### Security fixes (VulnHunter scan 2026-11-19)
 - The children's data is private to your macOS account however Santa is started (VULN-009, VULN-014, VULN-015, Low). Before, only `start-santa.sh` set a private umask; `python -m santa.web`, `run-web.sh` and `chat.py` left the profiles, their `.bak` and `.corrupt` copies, chat transcripts and `--debug-audio` recordings readable by other accounts on the Mac (files 0644, folders 0755). Now these files are created 0600 and their folders 0700, both entry points set umask 077, and an older readable profiles file becomes 0600 at its next save. Test: `tests/spec/test_private_files.py`.
