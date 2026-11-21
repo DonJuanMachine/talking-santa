@@ -48,6 +48,7 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
 - SECURITY.md said ignoring proxy headers and the 6-character PIN rule have no test of their own; `tests/spec/test_startup_guards.py` tests both. SECURITY.md now cites it, and only path confinement is listed as untested. Test: `tests/review/test_security_test_refs.py` (also checks that every test file SECURITY.md cites exists).
 - The 2026-11-19 review summary: the log-growth item under "Known open items" gave no reason it is accepted, although SECURITY.md promises one for each; it now does. The README's review line now says what the review found and fixed, as SECURITY.md does. Test: `tests/review/test_review_summary.py`.
 - README "Known limits" now names three exceptions that were only in "Known open items": Forget last pressed while Santa is still working out what was said removes the turn before; a burst of connections can open more than 4 call pages; unknown-name and malformed requests add log lines unthrottled. The "At most 4 Santa pages" and "request-flooding denial of service" sentences point there. Test: `tests/review/test_known_limits.py`.
+- CHANGELOG: six earlier commits had no line here, the backstory template and four sets of new tests; they now have one each ("Personal files in `local/`", "Tests (review)").
 
 ### Diagnostics
 - "Lost connection to Santa" now leaves a trail. The log gets a warning whenever a connection closes during a call (close
@@ -66,6 +67,17 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
   most once; not for the length cap or `SANTA_FILTER=legacy`. History holds what the child heard. The Timings overlay
   shows `stop` on such a turn (a yes/no flag only). In the stored replies, 4 of 1056 answers change this way; no other
   answer changes. Code: `santa/brain.py`, `santa/web/`; tests: `tests/spec/test_p1_2_safety_tail.py`.
+
+### Tests (review)
+- New tests, no behavior change: the safety gate's properties now also run with the arguments the app really uses
+  ("Ho ho" allowed or removed, the child's name, a gift turn), with checks that every rule is reached and that the
+  heard words are an in-order part of the reply, never longer unless it is the fallback, the same when run twice and
+  however the reply is chunked (`tests/spec/test_gate_app_args.py`); the real voices refuse unchecked text before the
+  engine is touched, and a refused sentence leaves the child hearing only the fallback (`tests/spec/test_voice_refusal.py`);
+  the start-up guards (127.0.0.1 by default, `--network` needs a 6-character PIN and both certificate files, proxy
+  headers off) are tested through `main()` (`tests/spec/test_startup_guards.py`); and every regex timing case runs in a
+  child process stopped after 5 s, so a pattern that goes slow again fails instead of hanging the suite
+  (`tests/spec/_timed.py`).
 
 ### Memory and speaker fixes (review, fix round 1)
 - Santa no longer saves a fact that claims what he promised, said or gave. "Santa promised her a pony", "Santa said
@@ -198,6 +210,7 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
   from `certs/` to `local/certs/`.
 - Added `scripts/run-web.sh` (starts the call page, kept awake with `caffeinate`, flags passed through).
 - Tests: `tests/spec/test_local_dir.py`.
+- Added an example backstory, `local.example/santa_world.txt.example`, to copy to `local/santa_world.txt` and edit.
 
 ### Stage I - conversation arc
 - Added `santa/arc.py`: per child, Santa asks once what the child would like for Christmas (by the child's 3rd
