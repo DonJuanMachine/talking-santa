@@ -177,7 +177,8 @@ def create_app(settings: Settings | None = None, alerter: Alerter | None = None,
         token = None
         if not gate.locked_for(client):
             body = await _read_capped(request, MAX_UNLOCK_BODY)
-            if body is None:
+            if body is None:                                  # too large: still a wrong try (VULN-003 follow-up)
+                gate.wrong_try(client)
                 return HTMLResponse(unlock_page("That PIN is not right."), status_code=413)
             token = gate.try_pin(client, parse_qs(body).get("pin", [""])[0])
         if token is None:

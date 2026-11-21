@@ -94,3 +94,23 @@ def test_one_device_share_resets_after_a_minute():
     assert g.admit("10.0.0.2")                                          # another device still has room
     now[0] = 60.0
     assert g.admit("10.0.0.1")
+
+
+def test_a_too_large_pin_try_counts_toward_the_lockout_so_two_addresses_cannot_block_forever(app):
+    """Fix-verify follow-up: a too-large body was answered 413 before the PIN check, so it used up the shared limit but
+    never counted toward that address's lockout. Two addresses could send 5 a minute each and keep the parent out
+    forever. Now it counts as a wrong try: each address is locked out (1, then 5 minutes) and stops being counted."""
+    now = [1000.0]
+    app.state.gate.clock = lambda: now[0]
+    attackers = [device(app, (ip, 40000)) for ip in ("fe80::a", "fe80::b")]
+    results = []
+    for minute in range(3):
+        for bad in attackers:
+            for _ in range(5):
+                huge_body(bad)
+        results.append(parent_unlocks(app))
+        now[0] += 61
+    assert results[-1] == 303                       # both addresses are locked out for 5 minutes: the parent gets in
+    for bad in attackers:
+        r = bad.post("/unlock", data={"pin": PIN})
+        assert r.status_code == 429 and "Wait" in r.text

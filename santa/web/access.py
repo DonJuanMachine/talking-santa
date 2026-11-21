@@ -111,6 +111,12 @@ class Gate:
         if hmac.compare_digest(pin.strip().encode(), self.s.pin.encode()):
             self._fails.pop(client_host, None)
             return self._token
+        self.wrong_try(client_host)
+        return None
+
+    def wrong_try(self, client_host: str) -> None:
+        """Count one failed PIN try from this device; lock it out after `pin_max_tries`. Also used for a PIN try that
+        is refused unread (too large), so it cannot use up the shared limit without counting toward the lockout."""
         n, lockouts, _ = self._fails.get(client_host, (0, 0, 0.0))
         n += 1
         until = 0.0
@@ -122,7 +128,6 @@ class Gate:
             self.on_alert(f"A device entered {self.s.pin_max_tries} wrong PINs and is locked out "
                           f"({wait_text(until - self.clock())}).")
         self._fails[client_host] = (n, lockouts, until)
-        return None
 
 
 def origin_ok(origin: str | None, host: str | None) -> bool:
