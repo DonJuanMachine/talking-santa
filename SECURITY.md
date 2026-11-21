@@ -55,11 +55,11 @@ untrusted devices.
 | Unsafe things said to a child | The first line of defence is the persona prompt, which tells Santa never to promise a specific gift and never to discuss being an AI. Then every spoken sentence is checked by a word-pattern filter that removes known shapes (gift promises, repeating addresses or phone numbers, scary words, Santa claiming to be an AI). The filter only removes text; its one addition is a fixed fallback line when nothing safe is left. The voice refuses text that has not been checked. The filter is not exhaustive: it misses wording outside its patterns, and the known gaps are listed in CHANGELOG.md ("Known open items") and pinned in `tests/spec/test_accepted_gate_gaps.py`. | `tests/spec/` |
 | Denial of service | Request body, audio frame and open-connection caps; one call at a time. Malformed requests (a bad Origin, a file name with a NUL byte or too long for the disk, deeply nested JSON) are refused without an error. The safety patterns have timing tests for the shapes known to be slow. | `tests/spec/test_low_fixes.py`, `tests/spec/test_regex_timing.py`, `tests/spec/test_malformed_requests.py` |
 | Path traversal | Static files are confined to their folder | `santa/web/server.py` |
-| Spoofed client address | Proxy headers are ignored (`X-Forwarded-For` cannot fake "this Mac") | `santa/web/__main__.py` |
+| Spoofed client address | Proxy headers are ignored (`X-Forwarded-For` cannot fake "this Mac") | `santa/web/__main__.py`, `tests/spec/test_startup_guards.py` |
 | Secrets or family data in git | Personal files live in the gitignored `local/` folder. A pre-commit hook blocks private files and secrets; install it with `scripts/install-git-hooks.sh`. `git commit --no-verify` skips it. | `scripts/git-hooks/pre-commit` |
 
-Most of these protections have regression tests. Path confinement, ignoring proxy headers and the 6-character PIN rule
-do not have a test of their own.
+Most of these protections have regression tests; the 6-character PIN rule and ignoring proxy headers are tested in
+`tests/spec/test_startup_guards.py`. Path confinement does not have a test of its own.
 
 **About the AI wording.** The first line of defence is the persona prompt: Santa is told to stay in character and not
 discuss being an AI or a computer with the children. The filter is a pattern filter: it removes sentences in known
