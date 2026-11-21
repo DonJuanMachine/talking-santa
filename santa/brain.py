@@ -469,6 +469,9 @@ class Santa:
     def save_transcript(self) -> None:
         if not self.log:
             return
-        config.TRANSCRIPT_DIR.mkdir(exist_ok=True)
+        config.TRANSCRIPT_DIR.mkdir(mode=0o700, exist_ok=True)
+        config.TRANSCRIPT_DIR.chmod(0o700)           # owner only, also for a folder made before (VULN-015)
         path = config.TRANSCRIPT_DIR / f"{datetime.now():%Y%m%d-%H%M%S}.txt"
+        path.touch(mode=0o600)
+        path.chmod(0o600)
         path.write_text("\n".join(self.log))

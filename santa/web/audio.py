@@ -43,7 +43,10 @@ def out_messages(uid: int, samples: np.ndarray) -> list[bytes]:
 def write_debug_wav(path, samples: np.ndarray, sr: int = SR_IN) -> None:
     """Only called with --debug-audio."""
     import wave
-    path.parent.mkdir(parents=True, exist_ok=True)
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    path.parent.chmod(0o700)                         # the child's voice: owner only (VULN-009)
+    path.touch(mode=0o600)
+    path.chmod(0o600)
     with wave.open(str(path), "wb") as w:
         w.setnchannels(1)
         w.setsampwidth(2)

@@ -18,6 +18,11 @@ def _bak(path: Path) -> Path:
     return path.with_name(path.name + ".bak")
 
 
+def _owner_only(path: Path) -> None:
+    """The children's names and facts: readable by the owner's account only, whatever the umask (VULN-009)."""
+    os.chmod(path, 0o600)
+
+
 NICKNAME_MAX, FAMILY_MAX, NAME_LEN = 12, 12, 40
 
 
@@ -100,7 +105,9 @@ def load(path: Path = config.PROFILES_PATH) -> dict:
     except (ValueError, OSError) as e:
         _warn(f"{path.name} is unreadable ({e}).")
     try:  # keep the broken file for the adult to inspect; save() will overwrite the original
-        shutil.copyfile(path, path.with_name(path.name + ".corrupt"))
+        corrupt = path.with_name(path.name + ".corrupt")
+        shutil.copyfile(path, corrupt)
+        _owner_only(corrupt)
     except OSError:
         pass
     bak = _bak(path)
@@ -120,6 +127,9 @@ def save(profiles: dict, path: Path = config.PROFILES_PATH) -> None:
     path = Path(path)
     tmp = path.with_name(path.name + ".tmp")
     try:
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)   # private before any data is written
+        os.fchmod(fd, 0o600)                         # a .tmp left by a crash keeps its old mode otherwise
+        os.close(fd)
         tmp.write_text(json.dumps({"children": profiles}, indent=2) + "\n")
         with open(tmp, "rb") as f:
             os.fsync(f.fileno())
@@ -127,6 +137,7 @@ def save(profiles: dict, path: Path = config.PROFILES_PATH) -> None:
             try:
                 _read(path)                          # only a valid file becomes the backup
                 shutil.copyfile(path, _bak(path))
+                _owner_only(_bak(path))
             except (ValueError, OSError):
                 pass
         os.replace(tmp, path)

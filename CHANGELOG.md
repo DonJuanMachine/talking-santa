@@ -6,6 +6,9 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
 
 ## [Unreleased]
 
+### Security fixes (VulnHunter scan 2026-11-19)
+- The children's data is private to your macOS account however Santa is started (VULN-009, VULN-014, VULN-015, Low). Before, only `start-santa.sh` set a private umask; `python -m santa.web`, `run-web.sh` and `chat.py` left the profiles, their `.bak` and `.corrupt` copies, chat transcripts and `--debug-audio` recordings readable by other accounts on the Mac (files 0644, folders 0755). Now these files are created 0600 and their folders 0700, both entry points set umask 077, and an older readable profiles file becomes 0600 at its next save. Test: `tests/spec/test_private_files.py`.
+
 ### Public-release gate (pass 11)
 - `.gitignore` now also ignores `*.env`, `*.bak` and a top-level `run/` in any folder, so a renamed settings copy or a backup outside `local/` cannot be committed by accident. Test: `tests/review/test_gitignore_private.py`.
 - Three development notes in `docs/history/` (FIXES, FIXES2, FIXES3) quoted a temporary path that held the macOS account name; it is now `<venv>`. A new test fails if any committed file holds an absolute home-folder path. Older commits still contain the path. Test: `tests/review/test_no_home_paths.py`.

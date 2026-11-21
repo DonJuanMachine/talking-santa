@@ -8,6 +8,7 @@
     /forget     wipe all memory, the backups and the saved transcripts
     /quit
 """
+import os
 import sys
 
 from santa import local
@@ -21,6 +22,7 @@ persona.use_world(local.santa_world())  # local/santa_world.txt, if you wrote on
 
 
 def main() -> None:
+    os.umask(0o077)  # profiles and transcripts are private to this account
     santa = Santa()
     print(f"Model: {santa.model}  |  Known children: {', '.join(santa.profiles) or 'none'}")
     print("Type 'Name: message' to speak as a registered child. /add Name, /who, /forget, /quit\n")

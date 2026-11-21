@@ -57,6 +57,7 @@ def load_settings_env() -> None:
 
 
 def main(argv=None) -> None:
+    os.umask(0o077)       # everything Santa writes (profiles, logs, debug audio) is private to this account
     load_settings_env()   # local/santa.env before any setting is read
     from santa import persona
     persona.use_world(local.santa_world())   # local/santa_world.txt, if you wrote one
