@@ -6,6 +6,9 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
 
 ## [Unreleased]
 
+### README
+- "What you need" now gives the memory needed: an Apple silicon Mac with 16 GB or more. The language model uses about 5 GB while it runs, and speech recognition and the voice under 1 GB more; replies may come more slowly on older chips. Estimated from the model's size; tested only on the 32 GB Mac named there.
+
 ### Built-in Santa picture
 - The call screen's built-in picture is now a painted Santa (`santa/web/static/santa-default.jpg`, 1000x1000) instead of the drawn SVG, which is removed. Your own `local/santa.*` and the older `static/santa.jpg` still come first. The README screenshot is retaken with it. The painting was made by the project owner with an AI image tool and is marked CC0 1.0 (no copyright claimed, any rights waived), separate from the MIT license of the code. Test: `tests/spec/test_local_dir.py`.
 
