@@ -46,6 +46,7 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
 - README and SECURITY.md said one device cannot use up the PIN limit and a family member is never slowed down. The share is per network address, so someone using several addresses can still block PIN entry for a while (as the VULN-003 follow-up above says). README, SECURITY.md and `docs/configuration.md` now say "5 from any one address" and state what is left. Test: `tests/review/test_pin_limit_wording.py`.
 - `scripts/security-scan.sh` ran Snyk's dependency scan with a repo-local `.venv/` that the documented setup never creates, so it fell back to the system `python3`, which lacks the dependencies, and the Snyk step failed. It now uses the README's environment (`~/.venvs/talking-santa-h`, or `SANTA_PYTHON`), as `run-web.sh` and `start-santa.sh` do. Test: `tests/review/test_scan_venv.py`.
 - SECURITY.md said ignoring proxy headers and the 6-character PIN rule have no test of their own; `tests/spec/test_startup_guards.py` tests both. SECURITY.md now cites it, and only path confinement is listed as untested. Test: `tests/review/test_security_test_refs.py` (also checks that every test file SECURITY.md cites exists).
+- The 2026-11-19 review summary: the log-growth item under "Known open items" gave no reason it is accepted, although SECURITY.md promises one for each; it now does. The README's review line now says what the review found and fixed, as SECURITY.md does. Test: `tests/review/test_review_summary.py`.
 
 ### Diagnostics
 - "Lost connection to Santa" now leaves a trail. The log gets a warning whenever a connection closes during a call (close
@@ -278,7 +279,9 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
   - Log growth: a request for an unknown name, a malformed HTTP request and an unsupported upgrade request each
     write a log line, unthrottled, from any device that can reach the server (VULN-001, VULN-010, VULN-011); a page
     that has the PIN can do the same with some WebSocket events (VULN-012, VULN-017, VULN-018). `local/run/santa.log`
-    is never rotated.
+    is never rotated while Santa runs. Accepted: it costs only disk space while someone keeps sending such requests,
+    the lines hold no speech or names, `start-santa.sh` starts the log empty each time, and a request for an unknown
+    name also raises the macOS alert.
   - Only a page that has the PIN (or this Mac) can do these: open more than 4 call pages by racing the handshake
     (VULN-005), queue background work without a cap with control messages (VULN-006), and grow a call's state while
     the page stays open (VULN-013).

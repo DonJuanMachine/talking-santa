@@ -452,8 +452,9 @@ Built for small children, so privacy and safety come first. The short version; d
   `requirements.txt` and on `requirements.lock`, the versions that actually run), Snyk, bandit, Semgrep and Trivy; tools
   that are not installed are skipped, and only a pip-audit failure fails the run. The dependency scan only covers
   published Python package advisories; see SECURITY.md for what it cannot see. AI-assisted reviews (VulnHunter) on
-  2026-11-10 and 2026-11-19 found issues; the CHANGELOG lists each fix, and the accepted ones under "Known open
-  items".
+  2026-11-10 and 2026-11-19 found issues. The 2026-11-19 review found 1 Medium and 16 Low issues, plus 4 it could not
+  prove; the Medium, 6 of the Lows and 1 of the unproven ones are fixed. The CHANGELOG lists each fix, and the accepted
+  ones, with the reason for each, under "Known open items".
 
 Found a security problem? Please report it privately; see [SECURITY.md](SECURITY.md). For bugs and ideas, see
 [CONTRIBUTING.md](CONTRIBUTING.md).
