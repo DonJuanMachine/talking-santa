@@ -154,7 +154,10 @@ def create_app(settings: Settings | None = None, alerter: Alerter | None = None,
         if path == "/status" and s.network and not is_loopback(client):
             return HTMLResponse("not found", status_code=404)     # children's names: this Mac only
         if not gate.allowed(client, request.cookies):
-            if not gate.admit():                                  # devices without the PIN: limited per minute
+            # Only PIN tries count, and not from a device that is locked out (unlock() answers it): the PIN page and
+            # other paths are free, so one device cannot use up the limit and lock everyone out (VULN-003).
+            if (path == "/unlock" and request.method == "POST" and not gate.locked_for(client or "")
+                    and not gate.admit(client)):
                 return HTMLResponse(unlock_page("Too many tries right now. Wait a minute, then try again."),
                                     status_code=429, headers={"Retry-After": "60"})
             if path == "/":
@@ -225,8 +228,7 @@ def create_app(settings: Settings | None = None, alerter: Alerter | None = None,
             await sock.close(code=1008)                     # another website or rebinding: refuse the handshake
             return
         if not gate.allowed(sock.client.host if sock.client else None, sock.cookies):
-            gate.admit()                                    # counts toward the per-minute limit
-            await sock.accept()
+            await sock.accept()                             # not a PIN try: not counted (VULN-003)
             await sock.close(code=4401)                     # page reloads and shows the PIN screen
             return
         if len(eng.sessions) >= MAX_SESSIONS:

@@ -43,8 +43,9 @@ class Settings:
     key_file: Path | None = None
     pin_max_tries: int = 5                        # wrong PINs from one device before a lockout
     pin_lockouts: tuple[float, ...] = (60, 300, 1800)   # each lockout is longer: 1 min, 5 min, then 30 min
-    gate_limit_per_min: int = int(os.getenv("SANTA_GATE_LIMIT", "10"))  # requests/min from devices without the PIN,
-                                                                      # all devices together
+    gate_limit_per_min: int = int(os.getenv("SANTA_GATE_LIMIT", "10"))  # PIN tries/min from devices without the
+                                                                      # PIN, all devices together
+    gate_limit_per_device: int = 5                # ...and from any one device, so one cannot use up everyone's tries
 
     alerts: bool = False                          # macOS security alert (on for `python -m santa.web`; SANTA_ALERTS=0)
 

@@ -213,9 +213,9 @@ What changes in this mode:
 - Other devices need the PIN: they see a PIN screen first. This Mac is never asked. After 5 wrong PINs, that device is
   locked out for 1 minute, then 5 minutes, then 30 minutes for each further 5 wrong tries. Restarting the server asks
   every device for the PIN again.
-- Devices that have not entered the PIN get at most 10 requests per minute, all devices together
-  (`SANTA_GATE_LIMIT`). Unlocking takes about 2, so a family member is never slowed down; a PIN guesser using many
-  addresses is.
+- PIN tries from devices that have not entered the PIN are limited to 10 a minute, all devices together
+  (`SANTA_GATE_LIMIT`), and 5 from any one device, so one device cannot use them all up. The PIN page itself is never
+  limited, so a family member is not slowed down; a PIN guesser using many addresses is.
 - One call at a time (in every mode): a second page that presses Call hears nothing and sees "Santa is on another
   call". At most 4 Santa pages can be open at once.
 - Security alert (macOS only, on by default in every mode; `SANTA_ALERTS=0` turns it off): a PIN lockout, the rate limit

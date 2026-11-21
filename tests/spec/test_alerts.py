@@ -62,8 +62,8 @@ def test_lockout_and_rate_limit_raise_alerts():
              clock=lambda: now[0], on_alert=seen.append)
     g.try_pin("10.0.0.1", "000000"); g.try_pin("10.0.0.1", "000000")
     assert len(seen) == 1 and "locked out" in seen[0]
-    for _ in range(5):
-        g.admit()
+    for n in range(5):
+        g.admit(f"10.0.0.{10 + n}")                                 # many devices: the shared limit trips
     assert len(seen) == 2 and "tries in one minute" in seen[1]      # once per limited stretch, not per request
 
 

@@ -7,8 +7,11 @@
   until the server restarts.
 - Wrong PINs: after `pin_max_tries` from one device, that device is locked out. Each lockout is longer than the last
   (`pin_lockouts`, e.g. 1 min, 5 min, 30 min).
-- Rate limit: devices that have not entered the PIN get at most `gate_limit_per_min` requests per minute, all devices
-  together. A PIN guesser using many addresses is held to that rate; this Mac and unlocked devices are not counted.
+- Rate limit: PIN tries (POST /unlock) from devices that have not entered the PIN are limited to
+  `gate_limit_per_min` a minute, all devices together, and `gate_limit_per_device` from any one device. A PIN guesser
+  using many addresses is held to the shared rate, and one device cannot use it all up and lock the family out
+  (VULN-003). The PIN page, other paths and refused WebSockets are not counted, nor is a device that is locked out.
+  This Mac and unlocked devices are never counted.
 - The WebSocket only accepts pages served by this server: Origin must equal Host, and Host must be on the allowlist.
 """
 import collections
@@ -44,7 +47,8 @@ class Gate:
         self._token = secrets.token_urlsafe(32)
         # client ip -> (wrong tries since the last lockout, lockouts so far, locked until)
         self._fails: dict[str, tuple[int, int, float]] = {}
-        self._recent: collections.deque[float] = collections.deque()   # times of counted locked-device requests
+        self._recent: collections.deque[float] = collections.deque()   # times of counted PIN tries, all devices
+        self._recent_by_device: dict[str, collections.deque[float]] = {}  # the same, per device
         self._limited_since: float | None = None
         self.hosts = {h.lower() for h in (*s.allowed_hosts, *s.extra_hosts)}
 
@@ -63,11 +67,21 @@ class Gate:
         return hmac.compare_digest(cookies.get(COOKIE, "").encode(), self._token.encode())
 
     # ------------------------------------------------------------------------------------------- rate limit
-    def admit(self) -> bool:
-        """Count one request from a device that has not entered the PIN. False once the per-minute limit is used."""
+    def admit(self, client_host: str | None) -> bool:
+        """Count one PIN try from a device that has not entered the PIN. False once the shared per-minute limit, or
+        this device's share of it, is used."""
         now = self.clock()
         while self._recent and now - self._recent[0] >= 60:
             self._recent.popleft()
+        for key in list(self._recent_by_device):     # stays small: at most gate_limit_per_min entries a minute
+            times = self._recent_by_device[key]
+            while times and now - times[0] >= 60:
+                times.popleft()
+            if not times:
+                del self._recent_by_device[key]
+        mine = self._recent_by_device.get(client_host or "", collections.deque())
+        if len(mine) >= self.s.gate_limit_per_device:
+            return False                             # this device's share: no alert, its lockout already alerts
         if len(self._recent) >= self.s.gate_limit_per_min:
             if self._limited_since is None:
                 self._limited_since = now
@@ -78,6 +92,8 @@ class Gate:
             return False
         self._limited_since = None
         self._recent.append(now)
+        mine.append(now)
+        self._recent_by_device[client_host or ""] = mine
         return True
 
     # ------------------------------------------------------------------------------------------- PIN

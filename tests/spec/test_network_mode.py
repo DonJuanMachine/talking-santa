@@ -209,12 +209,12 @@ def test_each_lockout_is_longer_and_never_resets_to_the_first():
 def test_rate_limit_counts_all_locked_devices_together():
     now = [0.0]
     g = Gate(fast_settings(host="0.0.0.0", pin=PIN, gate_limit_per_min=10), clock=lambda: now[0])
-    assert all(g.admit() for _ in range(10))
-    assert not g.admit()
+    assert all(g.admit(f"10.0.0.{n}") for n in range(10))  # one try each from 10 devices
+    assert not g.admit("10.0.0.99")                        # an 11th device: the shared limit is used
     now[0] = 59.9
-    assert not g.admit()
+    assert not g.admit("10.0.0.99")
     now[0] = 60.0                                          # the minute has passed
-    assert g.admit()
+    assert g.admit("10.0.0.99")
 
 
 def test_host_names_are_parsed_without_port_or_brackets():
@@ -263,9 +263,13 @@ def test_locked_devices_are_rate_limited_but_unlocked_ones_and_this_mac_are_not(
     assert lan.post("/unlock", data={"pin": PIN}).status_code == 200      # 1 counted request (then unlocked)
     for _ in range(15):
         assert lan.get("/").status_code == 200                           # unlocked: never counted
-    other = lan_client(lan.app)                                          # a second device, no cookie
-    codes = [other.get("/").status_code for _ in range(12)]
-    assert codes.count(200) == 9 and codes[-1] == 429                    # 10 per minute in total, both devices
-    assert other.get("/").headers.get("retry-after") == "60"
-    with lan_client(lan.app, client=("127.0.0.1", 50001)) as mac:
-        assert mac.get("/").status_code == 200                           # this Mac is never limited
+    # PIN tries from devices without the PIN: 10 a minute in total (the unlock above was 1), at most 5 per device.
+    # A too-large body is refused (413) without counting toward that device's lockout, so only the limit stops it.
+    big = dict(content=b"pin=" + b"1" * 5000, headers={"content-type": "application/x-www-form-urlencoded"})
+    codes = [lan_client(lan.app, client=(f"10.0.0.{n}", 40000)).post("/unlock", **big).status_code
+             for n in (1, 1, 1, 2, 2, 2, 3, 3, 3, 4)]
+    assert codes.count(413) == 9 and codes[-1] == 429
+    assert lan_client(lan.app, client=("10.0.0.5", 40000)).post("/unlock", **big).headers.get("retry-after") == "60"
+    assert lan_client(lan.app, client=("10.0.0.5", 40000)).get("/").status_code == 200   # the PIN page is never limited
+    mac = lan_client(lan.app, client=("127.0.0.1", 50001))
+    assert mac.get("/").status_code == 200                               # this Mac is never limited
