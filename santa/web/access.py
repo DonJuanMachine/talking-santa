@@ -128,7 +128,11 @@ def origin_ok(origin: str | None, host: str | None) -> bool:
     the PIN or loopback check still applies after this."""
     if not origin:
         return True
-    return bool(host) and urlsplit(origin).netloc.lower() == host.lower()
+    try:
+        netloc = urlsplit(origin).netloc
+    except ValueError:                               # e.g. "http://[": not this server; refuse quietly (VULN-021)
+        return False
+    return bool(host) and netloc.lower() == host.lower()
 
 
 def wait_text(seconds: float) -> str:
