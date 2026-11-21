@@ -49,8 +49,10 @@ Known limits are listed under [Known limits](#known-limits).
 ## What you need
 
 - An Apple silicon Mac (the voice app uses Apple's MLX for speech recognition) with 16 GB of memory or more. The
-  language model uses about 5 GB while it runs, and speech recognition and the voice use under 1 GB more. On a 16 GB
-  Mac, close other large apps during a call. Replies may come more slowly on older chips than on the tested Mac.
+  language model's server used about 10 GB during a benchmark run on the tested Mac (see
+  [docs/model-selection.md](docs/model-selection.md)), and speech recognition and the voice use under 1 GB more. A
+  16 GB Mac has not been tested: close other large apps during a call. Replies may come more slowly on older chips than
+  on the tested Mac.
 - Python 3.12. The install below runs `python3.12`; if `python3.12 --version` says "command not found", install it
   with [Homebrew](https://brew.sh/): `brew install python@3.12`. A newer Python 3 may work in its place but is
   untested.
