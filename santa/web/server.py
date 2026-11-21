@@ -33,7 +33,7 @@ from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 
 from . import canned
-from .access import COOKIE, Gate, origin_ok, unlock_page, wait_text
+from .access import COOKIE, Gate, from_another_site, origin_ok, unlock_page, wait_text
 from .alerts import Alerter
 from .session import MAX_AUDIO_MSG, CallSession, State, Workers
 from .settings import PKG, Settings, is_loopback
@@ -151,6 +151,9 @@ def create_app(settings: Settings | None = None, alerter: Alerter | None = None,
             return HTMLResponse("unknown host", status_code=400)  # DNS rebinding: another site's name for us
         client = request.client.host if request.client else None
         path = request.url.path
+        if path == "/unlock" and request.method == "POST" and from_another_site(
+                request.headers.get("origin"), request.headers.get("sec-fetch-site"), request.headers.get("host")):
+            return HTMLResponse("forbidden", status_code=403)      # another site's form: not a PIN try (VULN-004)
         if path == "/status" and s.network and not is_loopback(client):
             return HTMLResponse("not found", status_code=404)     # children's names: this Mac only
         if not gate.allowed(client, request.cookies):

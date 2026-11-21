@@ -13,6 +13,8 @@
   (VULN-003). The PIN page, other paths and refused WebSockets are not counted, nor is a device that is locked out.
   This Mac and unlocked devices are never counted.
 - The WebSocket only accepts pages served by this server: Origin must equal Host, and Host must be on the allowlist.
+- PIN tries (POST /unlock) from another website are refused before they are counted, so a site open in a family
+  browser cannot lock that device out with wrong PINs (VULN-004).
 """
 import collections
 import hmac
@@ -133,6 +135,12 @@ def origin_ok(origin: str | None, host: str | None) -> bool:
     except ValueError:                               # e.g. "http://[": not this server; refuse quietly (VULN-021)
         return False
     return bool(host) and netloc.lower() == host.lower()
+
+
+def from_another_site(origin: str | None, fetch_site: str | None, host: str | None) -> bool:
+    """A form post made by another website (VULN-004): a foreign or `null` Origin, or Sec-Fetch-Site: cross-site.
+    No Origin (curl, an old browser) is not refused: the PIN tries and the rate limit still apply."""
+    return (fetch_site or "").lower() == "cross-site" or (origin is not None and not origin_ok(origin, host))
 
 
 def wait_text(seconds: float) -> str:
