@@ -35,8 +35,9 @@ run gitleaks-history gitleaks detect --source . --redact --no-banner
 # README "Regenerate requirements.lock"). The lock is audited as pinned (no resolving, no installing). Any finding fails the scan.
 run pip-audit       pip-audit -r requirements.txt || AUDIT_FAILED=true
 run pip-audit-lock  pip-audit -r requirements.lock --no-deps --disable-pip || AUDIT_FAILED=true
-# snyk's pip scan spawns a bare `python` (absent on macOS) and needs the deps installed: use the project venv
-SNYK_PY="$ROOT/.venv/bin/python"; [ -x "$SNYK_PY" ] || SNYK_PY=python3
+# snyk's pip scan spawns a bare `python` (absent on macOS) and needs the deps installed: use the project venv from the
+# README (the same default as run-web.sh and start-santa.sh; SANTA_PYTHON overrides it)
+SNYK_PY="${SANTA_PYTHON:-$HOME/.venvs/talking-santa-h/bin/python}"; [ -x "$SNYK_PY" ] || SNYK_PY=python3
 run snyk-deps  snyk test --file=requirements.txt --package-manager=pip --command="$SNYK_PY"
 
 # 3. Static analysis of own code
