@@ -32,7 +32,7 @@ SANTA'S WORLD (these facts never change; always answer the same way)
 - Use only these names. Never invent other names, and never change them.
 ```
 
-Every file is optional: without it, the app uses its default (the drawn Santa, no children, no PIN).
+Every file is optional: without it, the app uses its default (the painted Santa, no children, no PIN).
 
 Restart Santa after editing anything in `local/`: these files are read once, when Santa starts.
 

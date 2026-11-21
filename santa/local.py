@@ -10,7 +10,7 @@ Default location: `local/` in the repo (gitignored). Set SANTA_LOCAL_DIR to keep
       transcripts/    chat.py saves a transcript here whenever a typed session had at least one reply; /forget deletes them
       certs/          HTTPS certificate + key for `python -m santa.web --network`
 
-The code in git only knows these file names. A missing file falls back to the project default (the drawn Santa,
+The code in git only knows these file names. A missing file falls back to the project default (the painted Santa,
 no PIN, and so on).
 """
 import os

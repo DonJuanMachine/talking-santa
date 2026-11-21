@@ -47,7 +47,7 @@ def test_profiles_move_to_local_but_an_old_root_file_still_works(tmp_path, monke
     assert local.profiles_path() == tmp_path / "local" / "profiles.json"
 
 
-def test_call_page_serves_your_picture_else_the_drawing(tmp_path):
+def test_call_page_serves_your_picture_else_the_painting(tmp_path):
     from fastapi.testclient import TestClient
     from test_network_mode import app_for
 
@@ -57,7 +57,7 @@ def test_call_page_serves_your_picture_else_the_drawing(tmp_path):
         assert c.get("/santa-image").content == pic.read_bytes()
     with TestClient(app_for(santa_image=None)) as c:
         r = c.get("/santa-image")
-        assert r.headers["content-type"].startswith("image/svg")
+        assert r.headers["content-type"].startswith("image/jpeg")
 
 
 # ------------------------------------------------------------------------------- one settings parser (2026-11-10)

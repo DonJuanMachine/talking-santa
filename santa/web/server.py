@@ -208,9 +208,9 @@ def create_app(settings: Settings | None = None, alerter: Alerter | None = None,
 
     @app.get("/santa-image")
     async def santa_image():
-        # your picture in local/ (gitignored), else the older static/santa.jpg spot, else the drawn Santa
+        # your picture in local/ (gitignored), else the older static/santa.jpg spot, else the built-in painting
         legacy = STATIC / "santa.jpg"
-        pic = s.santa_image or (legacy if legacy.is_file() else STATIC / "santa.svg")
+        pic = s.santa_image or (legacy if legacy.is_file() else STATIC / "santa-default.jpg")
         return FileResponse(pic, headers={"Cache-Control": "no-cache"})
 
     @app.get("/status")

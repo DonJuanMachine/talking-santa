@@ -244,9 +244,12 @@ and certificates are never committed; the code only knows the file names. Templa
 template `local.example/santa.env.example`; every setting is in [docs/configuration.md](docs/configuration.md)); a
 value set in your shell wins.
 
-**Santa's picture.** The call screen shows a drawn Santa (`santa/web/static/santa.svg`). To use your own picture, save
+**Santa's picture.** The call screen shows a painted Santa (`santa/web/static/santa-default.jpg`). To use your own picture, save
 it as `local/santa.jpg` (or `.png` / `.webp`; square works best, for example 800x800) and restart Santa. Remove it and
-restart to go back to the drawing, or edit the SVG to change the drawing.
+restart to go back to the painting. The painting was made by the project owner with an AI image tool. No copyright is
+claimed in it, and any rights the owner may have are waived under
+[CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/), so it is free to use for any purpose. The MIT licence
+covers the code, not this picture.
 
 **Santa's name.** The name appears in two places, and you will usually want to change both:
 - *On screen*, in `santa/web/static/index.html`: the big name on the call screen (`<div id="name">Santa Claus</div>`),
