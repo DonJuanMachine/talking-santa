@@ -23,7 +23,8 @@ these terms, and you agree that an adult stays in the room for every call.
 - **It runs on your Mac.** Speech recognition, the language model and the voice run on this Mac. Santa's own code makes
   no network calls except to the model server on this Mac (`localhost:12434` by default), and it keeps the
   speech-model loader offline however you start it, unless you set `HF_HUB_OFFLINE` yourself. If you point
-  `SANTA_BASE_URL` at another computer, the children's words go there. Docker Desktop is separate software with its own
+  `SANTA_BASE_URL` at another computer, the children's words go there. With Pocket TTS, use a built-in voice name: a
+  web address in `SANTA_VOICE` may be downloaded. Docker Desktop is separate software with its own
   settings.
 - **The call page saves no audio and no transcripts.** It saves short facts about each registered child in
   `local/profiles.json`. The `--debug-audio` flag saves recordings, and the typed chat (`chat.py`) saves transcripts. See
@@ -444,8 +445,9 @@ Built for small children, so privacy and safety come first. The short version; d
   can be skipped with `git commit --no-verify`. `scripts/security-scan.sh` runs gitleaks, pip-audit (on
   `requirements.txt` and on `requirements.lock`, the versions that actually run), Snyk, bandit, Semgrep and Trivy; tools
   that are not installed are skipped, and only a pip-audit failure fails the run. The dependency scan only covers
-  published Python package advisories; see SECURITY.md for what it cannot see. An AI-assisted review (VulnHunter) on
-  2026-11-10 found issues; the CHANGELOG lists each one that was fixed.
+  published Python package advisories; see SECURITY.md for what it cannot see. AI-assisted reviews (VulnHunter) on
+  2026-11-10 and 2026-11-19 found issues; the CHANGELOG lists each fix, and the accepted ones under "Known open
+  items".
 
 Found a security problem? Please report it privately; see [SECURITY.md](SECURITY.md). For bugs and ideas, see
 [CONTRIBUTING.md](CONTRIBUTING.md).

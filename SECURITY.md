@@ -53,7 +53,7 @@ untrusted devices.
 | Clickjacking | `frame-ancestors 'none'` and `X-Frame-Options: DENY` on every response, plus `nosniff` and `no-referrer` | `tests/spec/test_low_fixes.py` |
 | Prompt injection through stored memories | Remembered facts that read like instructions to Santa are blocked by a keyword check and never saved, and so are facts that claim what Santa promised, said or gave. Facts are single-line, limited to 100 characters, and have brackets removed so they cannot close the facts note. Facts typed by hand are not checked. | `tests/spec/test_low_fixes.py`, `tests/spec/test_round1_facts.py` |
 | Unsafe things said to a child | The first line of defence is the persona prompt, which tells Santa never to promise a specific gift and never to discuss being an AI. Then every spoken sentence is checked by a word-pattern filter that removes known shapes (gift promises, repeating addresses or phone numbers, scary words, Santa claiming to be an AI). The filter only removes text; its one addition is a fixed fallback line when nothing safe is left. The voice refuses text that has not been checked. The filter is not exhaustive: it misses wording outside its patterns, and the known gaps are listed in CHANGELOG.md ("Known open items") and pinned in `tests/spec/test_accepted_gate_gaps.py`. | `tests/spec/` |
-| Denial of service | Request body, audio frame and open-connection caps; one call at a time. The safety patterns have timing tests for the shapes known to be slow. | `tests/spec/test_low_fixes.py`, `tests/spec/test_regex_timing.py` |
+| Denial of service | Request body, audio frame and open-connection caps; one call at a time. Malformed requests (a bad Origin, a NUL byte in a file name, deeply nested JSON) are refused without an error. The safety patterns have timing tests for the shapes known to be slow. | `tests/spec/test_low_fixes.py`, `tests/spec/test_regex_timing.py`, `tests/spec/test_malformed_requests.py` |
 | Path traversal | Static files are confined to their folder | `santa/web/server.py` |
 | Spoofed client address | Proxy headers are ignored (`X-Forwarded-For` cannot fake "this Mac") | `santa/web/__main__.py` |
 | Secrets or family data in git | Personal files live in the gitignored `local/` folder. A pre-commit hook blocks private files and secrets; install it with `scripts/install-git-hooks.sh`. `git commit --no-verify` skips it. | `scripts/git-hooks/pre-commit` |
@@ -71,9 +71,12 @@ not a computer. It is not exhaustive: for example, "I am... an AI." (three dots 
 - The language model, speech recognition and voice run on this Mac. Santa's own code makes no network calls except to
   the model server on the same Mac (`localhost:12434` by default). The entry point keeps the speech-model loader
   offline unless you set `HF_HUB_OFFLINE` yourself. Setup downloads need the internet once. If you point
-  `SANTA_BASE_URL` at another computer, the children's words go there. Docker Desktop is separate software with its own
+  `SANTA_BASE_URL` at another computer, the children's words go there. With Pocket TTS, use a built-in voice name: a
+  web address in `SANTA_VOICE` may be downloaded. Docker Desktop is separate software with its own
   settings.
 - Santa's code sends no telemetry.
+- The children's profiles, their backups, chat transcripts and debug recordings are readable only by your macOS
+  account (files 0600, folders 0700), however Santa is started (`tests/spec/test_private_files.py`).
 - The call page saves no audio or transcripts. `--debug-audio` saves recordings, and the typed chat (`chat.py`) saves
   transcripts to `local/transcripts/`; `/forget` in `chat.py` deletes them. The README lists everything that is
   written to disk.
@@ -101,7 +104,9 @@ not a computer. It is not exhaustive: for example, "I am... an AI." (three dots 
   is a snapshot: regenerate it after any install or upgrade (command in the README) and run the scan again.
 
 - **Regression tests:** most protections above have tests, which run with the normal suite (`pytest`).
-- **Reviews:** an AI-assisted review ([VulnHunter](https://github.com/capitalone/VulnHunter)) on 2026-11-10 found
-  issues; the [CHANGELOG](CHANGELOG.md) lists each one that was fixed.
+- **Reviews:** AI-assisted reviews ([VulnHunter](https://github.com/capitalone/VulnHunter)) on 2026-11-10 and
+  2026-11-19. The 2026-11-19 review of the web server and scripts found 1 Medium and 16 Low issues, plus 4 it could
+  not prove. The Medium, 6 of the Lows and 1 of the unproven ones are fixed; the [CHANGELOG](CHANGELOG.md) lists each
+  fix, and the rest, with the reason each is accepted, under "Known open items".
 
 Scans and reviews reduce risk; they do not prove the absence of vulnerabilities. Reports are welcome.
