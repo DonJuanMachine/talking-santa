@@ -25,7 +25,7 @@ untested.
 python3.12 -m venv ~/.venvs/talking-santa-h && source ~/.venvs/talking-santa-h/bin/activate
 pip install -e ".[web,dev]"        # the voice app and the test tools; the README's "One-time install" has the model downloads
 bash scripts/install-git-hooks.sh  # pre-commit hook: blocks commits that contain private files or secrets
-mkdir -p local                     # your personal files (gitignored); template in local.example/
+mkdir -p local && chmod 700 local  # your personal files (gitignored, private); template in local.example/
 ```
 
 The hook can be skipped with `git commit --no-verify`.

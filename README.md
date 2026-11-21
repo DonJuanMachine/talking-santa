@@ -80,8 +80,8 @@ curl -L -o $M/silero_vad.onnx  https://github.com/snakers4/silero-vad/raw/master
 # 3. The language model: Docker Desktop > Settings > Model Runner > enable host-side TCP (port 12434), then
 docker model pull ai/gemma4:e4b            # only ONE large model should be loaded at a time
 
-# 4. Your personal folder (gitignored; see "Customize")
-mkdir -p local && cp profiles.example.json local/profiles.json    # then edit it
+# 4. Your personal folder (gitignored and private to your macOS account; see "Customize")
+mkdir -p local && chmod 700 local && cp profiles.example.json local/profiles.json    # then edit it
 
 # 5. Check that the model answers
 source ~/.venvs/talking-santa-h/bin/activate

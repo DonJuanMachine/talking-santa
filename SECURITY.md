@@ -75,8 +75,11 @@ not a computer. It is not exhaustive: for example, "I am... an AI." (three dots 
   web address in `SANTA_VOICE` may be downloaded. Docker Desktop is separate software with its own
   settings.
 - Santa's code sends no telemetry.
-- The children's profiles, their backups, chat transcripts and debug recordings are readable only by your macOS
-  account (files 0600, folders 0700), however Santa is started (`tests/spec/test_private_files.py`).
+- The children's profiles, their backups, chat transcripts and debug recordings that Santa writes are readable only by
+  your macOS account (files 0600, folders 0700), however Santa is started (`tests/spec/test_private_files.py`). A file
+  you copy or edit yourself, such as `local/profiles.json` or `local/santa.env`, keeps the permissions it was made with
+  (usually readable by other accounts) until Santa next saves it, so the install makes the folder private with
+  `chmod 700 local`; `scripts/start-santa.sh` sets it again at every start.
 - The call page saves no audio or transcripts. `--debug-audio` saves recordings, and the typed chat (`chat.py`) saves
   transcripts to `local/transcripts/`; `/forget` in `chat.py` deletes them. The README lists everything that is
   written to disk.

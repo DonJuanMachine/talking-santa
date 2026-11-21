@@ -16,7 +16,7 @@ local/
 
 Set it up:
 ```bash
-mkdir -p local
+mkdir -p local && chmod 700 local                     # only your macOS account can look inside
 cp local.example/santa.env.example local/santa.env    # then edit
 cp profiles.example.json local/profiles.json          # then edit
 cp ~/Pictures/my-santa.jpg local/santa.jpg            # optional
