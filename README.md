@@ -2,7 +2,7 @@
 
 <img src="docs/images/call-page.jpg" width="640" alt="The call page: a Santa picture in a circle, the name Santa Claus and a green Call button">
 
-A talking Santa for young children, ages 2 to 5, that runs on one Mac. Speech recognition, the language model and the
+A talking Santa written for young children that runs on one Mac. Speech recognition, the language model and the
 voice all run locally, and an adult stays in the room for every call.
 
 ```
