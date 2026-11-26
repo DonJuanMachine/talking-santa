@@ -18,6 +18,8 @@ IGNORED = [
     "local/profiles.json", ".env", ".env.local",
     # P11-3: renamed settings copies, backups and a stray run/ folder outside local/
     "home.env", "a/b/x.env", "x.bak", "santa/profiles.bak", "local.example/santa.env.bak", "run/server.pid",
+    # the call log, next to a profiles file chosen with SANTA_PROFILES, and its tmp and broken copies
+    "calls.json", "second-family/calls.json", "calls.json.tmp", "a/calls.json.corrupt", "a/calls.json.corrupt.2",
 ]
 NOT_IGNORED = [
     "local.example/santa.env.example", "santa.env.example", ".env.example", "docs/x.md", "santa/ok.py",

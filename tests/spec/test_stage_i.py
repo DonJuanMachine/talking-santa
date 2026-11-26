@@ -57,6 +57,9 @@ def _arc_on(monkeypatch):
     # Added 2026-11-10: "Ho ho ho" once (brain.ho_once) removes "Ho ho" from the scripted replies; off here for the
     # same reason. Its own tests are in test_ho_once.py.
     monkeypatch.setenv("SANTA_HO_ONCE", "0")
+    # Added 2026-11-25: the conversation guide (hello, likes and nice-list notes) adds text to the current user turn
+    # when the arc is off; off here for the same reason. Its own tests are in test_guide.py.
+    monkeypatch.setenv("SANTA_GUIDE", "0")
 
 
 class Cycle:

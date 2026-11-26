@@ -37,6 +37,14 @@ def test_a_right_pin_from_another_site_does_not_unlock(lan):
     assert r.status_code == 403 and "set-cookie" not in r.headers
 
 
+def test_the_pin_page_lets_its_form_send_a_real_origin(lan):
+    """A browser posts a form with `Origin: null` when the page's Referrer-Policy is no-referrer (Fetch standard), and
+    that is refused above, so the PIN could never be entered from an iPad. Same-origin keeps the real Origin."""
+    r = lan.get("/")
+    assert "/unlock" in r.text
+    assert r.headers["referrer-policy"] == "same-origin"
+
+
 @pytest.mark.parametrize("headers", [SAME_SITE, {}, {**SAME_SITE, "sec-fetch-site": "same-origin"}])
 def test_the_pin_page_form_and_clients_without_origin_still_work(lan, headers):
     assert lan.post("/unlock", data={"pin": "000000"}, headers=headers).status_code == 401

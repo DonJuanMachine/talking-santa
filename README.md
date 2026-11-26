@@ -152,6 +152,17 @@ What Santa does, and how to change it (set values in `local/santa.env`; see [Cus
   Christmas-wish question. If the reply did not ask it, it is tried again on up to 2 more turns. Never while the child
   sounds sad (and for 2 turns after). `SANTA_GIFT_ASK=0` turns it off, `SANTA_GIFT_ASK_TURN` changes the turn. Off when
   `SANTA_ARC=1`. Guests share one slot. Code: `santa/gifts.py`.
+- **Conversation guide** (on by default): on a registered child's first turn of a call (usually "I'm Emma"), Santa is
+  told to say hello by name, to say he is so happy to hear from them again if they called before (call page), and to
+  ask how they are, nothing else. A guest (a child who is not registered) gets the same hello and "how are you",
+  once per call, without the welcome back. On the next turn a registered child is asked one question about something
+  the child likes. If the child's profile has a remembered like or pet ("likes snow angels", "has a cat named Mittens"), he asks about that,
+  one per call, a different one each call (each day without the call log); wishes are never used, the gift question
+  covers those. The likes question waits while the child is sad and gives way to the gift question. Any child,
+  registered or not, who asks about the nice or naughty list is told yes, they are on the nice list, with no
+  conditions ("if you are good"). Santa is also told to ask mostly about what children like, never to ask about their
+  dreams (unless the child brings dreams up; a "dream gift" is fine), and to say "sweet dreams" only from 7 PM.
+  `SANTA_GUIDE=0` turns the notes off; hello and likes are off when `SANTA_ARC=1`. Code: `santa/guide.py`.
 - **Santa's backstory:** a fixed North Pole world (Mrs. Claus is Mary, the nine reindeer, four named elves) so he
   answers the same way every call. Replace it with your own in `local/santa_world.txt` (see `local.example/README.md`);
   the built-in text is `WORLD_DEFAULT` in `santa/persona.py`.
@@ -161,8 +172,17 @@ What Santa does, and how to change it (set values in `local/santa.env`; see [Cus
   local model), passes the same privacy checks as other saved facts, and each new one replaces the old one. No
   transcript is stored. It is not made if the connection simply drops. `SANTA_CALL_SUMMARY=0` turns it off; delete the
   line from `local/profiles.json` to forget it.
+- **Call log** (on by default): Santa keeps when each registered child called in `local/calls.json`: names, dates and
+  times only, no words. A child is logged once per call, when Santa has answered their 2nd turn, with the time of
+  their first answered turn, so a call that drops is logged too. Guests are never logged, and the typed chat
+  (`chat.py`) never writes it. On that child's first turn Santa is told how many times they called before and when the
+  last call was, in words like "yesterday evening" or "3 days ago", with the conversation guide's welcome back (on
+  every turn, as a may-mention, when `SANTA_GUIDE=0`). He is told never to say a date. Each child keeps their latest
+  50 calls. `SANTA_CALL_LOG=0` turns it off (nothing is read or written); delete `local/calls.json`, or a child's line
+  in it, to forget.
 - **Time of day** (on by default): on the call's first turn and on goodbyes, Santa is told this Mac's time, so he says
-  good morning, not good night, at 9 AM. `SANTA_TIME_NOTE=0` turns it off.
+  good morning, not good night, at 9 AM. From 7 PM the note also says "sweet dreams" is fine in a goodbye; before
+  7 PM he is told not to say it. `SANTA_TIME_NOTE=0` turns it off.
 - **"Ho ho ho" once** (on by default): Santa laughs one big, slower "Ho, ho, ho!" when he answers the call. After that he
   says "Ho ho" only when the child sings or tells a joke. The prompt asks for this and the speech filter removes any
   other "Ho ho". `SANTA_HO_ONCE=0` turns it off. To change the laugh, edit `laugh`, `LAUGH_SPEED` and `LAUGH_PAUSE_S`
@@ -328,7 +348,7 @@ but Santa ignores them. The example below uses made-up children and a made-up pl
 ```
 /add Emma   register a child (Santa only remembers registered children)
 /who        show remembered facts
-/forget     wipe all memory, the backups and the saved transcripts
+/forget     wipe all memory, the backups, the call log and the saved transcripts
 /quit
 ```
 
@@ -342,8 +362,10 @@ What is written to disk, where and when:
 | Situation | Written | Where | Contains |
 |---|---|---|---|
 | Call page (default) | `profiles.json`, rewritten after each turn of a registered child, on Forget last and at Hang up; `profiles.json.bak` (the previous good file); `profiles.json.tmp` while writing. Guests are never saved. | `local/` | Names, ages, nicknames, family names, short fact sentences, the `Last call:` line |
+| Call page (default) | `calls.json` (next to the profiles file when `SANTA_PROFILES` is set), when Santa has answered a registered child's 2nd turn of a call; `calls.json.tmp` while writing. Guests are never saved. `SANTA_CALL_LOG=0` turns it off. | `local/` | Each registered child's name and the date and time of their latest 50 calls |
+| A `calls.json` that cannot be read | `calls.json.corrupt`, a copy of the broken file, before a new log is started; a later broken file goes to `calls.json.corrupt.2`, `.3` and so on, never over an earlier copy | `local/` | Whatever was in it |
 | Call page, first start for a voice setting | Canned-line audio (`*.npy`) | `santa/web/.cache/` (gitignored) | Santa's fixed lines only |
-| Call page (default) | No audio, no transcripts, no log file | - | - |
+| Call page (default) | No audio, no transcripts | - | - |
 | Started with `scripts/start-santa.sh` | `santa.log` (private to you), `server.pid` | `local/run/` | Warnings, start-up lines, model errors, alert reasons, and why a call's connection ended (state names and numbers) |
 | `--debug-audio` | One `.wav` per child utterance, before recognition | `santa/web/debug_audio/` (gitignored) | **The children's voices** |
 | `--metrics-file PATH` | One line of numbers per turn | `PATH` | Timings, counters, reason codes; no text |
@@ -356,11 +378,13 @@ Logs hold timings, counters and reason codes, not speech. `/status` also lists t
 on this Mac.
 
 **See it, delete it:**
-1. *See what Santa remembers:* open `local/profiles.json` (or run `python chat.py` and type `/who`).
+1. *See what Santa remembers:* open `local/profiles.json` (or run `python chat.py` and type `/who`), and
+   `local/calls.json` for when each child called.
 2. *Delete some of it:* press **Forget last** on the call page for the last turn's facts. For anything else (older
    facts, the *Last call* line) stop Santa, edit `local/profiles.json`, and delete `profiles.json.bak` and
-   `profiles.json.corrupt` if present, since they hold earlier copies.
-3. *Delete everything:* type `/forget` in `chat.py` (profiles, backups and transcripts), or delete the files in
+   `profiles.json.corrupt` if present, since they hold earlier copies. Edit or delete `local/calls.json` the same way,
+   with any `calls.json.corrupt*` copies (Forget last does not touch it).
+3. *Delete everything:* type `/forget` in `chat.py` (profiles, backups, the call log and transcripts), or delete the files in
    `local/` yourself, plus `santa/web/debug_audio/` if you ever used `--debug-audio`.
 
 ## Failure behavior
@@ -483,8 +507,10 @@ also run JavaScript tests when Node.js is installed.
 Layout:
 - `santa/` - the core: `brain.py` (history + memory + reply, reused by the voice page), `persona.py` (system prompt),
   `spec.py` (every reply rule), `speech.py` (remove-only streaming filter), `safety.py` (wrapper for callers of the
-  filter), `memory.py` (per-child facts in `local/profiles.json`), `local.py` (finds your files in `local/`),
-  `config.py` (model and memory settings, read from the environment), plus `arc.py`, `cues.py`, `gifts.py`, `songs.py`
+  filter), `memory.py` (per-child facts in `local/profiles.json`), `calllog.py` (when each child called, in
+  `local/calls.json`), `local.py` (finds your files in `local/`),
+  `config.py` (model and memory settings, read from the environment), plus `arc.py`, `cues.py`, `gifts.py`, `guide.py`,
+  `songs.py`
   - `santa/web/` - the call page: voice activity detection and end of speech, Whisper speech recognition, Pocket TTS
     (or Kokoro) voice, call state machine (uses the brain unchanged); the page itself is in `santa/web/static/`
   - `santa/legacy/` - the alternative output filter (`SANTA_FILTER=legacy`)

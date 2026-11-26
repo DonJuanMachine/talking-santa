@@ -62,10 +62,12 @@ Every setting Santa reads, with its default. The defaults below are the values i
 | `SANTA_GIFT_ASK` | `1` (on) | The gift question. Off when `SANTA_ARC` is on. |
 | `SANTA_GIFT_ASK_TURN` | `5` | The child's turn number that first gets the gift question. |
 | `SANTA_GENTLE` | `1` (on) | Gentle mode after a sad or scared turn. |
+| `SANTA_GUIDE` | `1` (on) | Conversation guide: hello and "how are you" on a child's first turn (registered or guest; a welcome back if a registered child called before), then one question about what they like; a yes with no conditions when any child asks about the nice list. Hello and likes are off when `SANTA_ARC` is on. |
 | `SANTA_SONGS` | `1` (on) | Santa says a carol's first verse when asked, from fixed text. |
 | `SANTA_HO_ONCE` | `1` (on) | "Ho ho ho" once when answering, then only for a child's song or joke. |
-| `SANTA_TIME_NOTE` | `1` (on) | Tell Santa this Mac's time on the first turn and on goodbyes. |
+| `SANTA_TIME_NOTE` | `1` (on) | Tell Santa this Mac's time on the first turn and on goodbyes. From 7 PM it also says "sweet dreams" is fine in a goodbye. |
 | `SANTA_CALL_SUMMARY` | `1` (on) | Save one `Last call:` line per child at Hang up. |
+| `SANTA_CALL_LOG` | `1` (on) | Keep when each registered child called in `local/calls.json` (call page only) and tell Santa on that child's first turn (every turn when `SANTA_GUIDE=0`). |
 
 ## Timing and failure
 
@@ -95,7 +97,7 @@ The model timeouts (`SANTA_TIMEOUT`, `SANTA_WARMUP_TIMEOUT`, `SANTA_WARMUP_RETRY
 | Setting | Default | What it does |
 |---|---|---|
 | `SANTA_LOCAL_DIR` | `local/` in the repository | Where your personal files live. Set it in the shell only; it cannot be set in `local/santa.env`. |
-| `SANTA_PROFILES` | `local/profiles.json` | The children's profiles file. A `profiles.json` in the repository folder is used until you move it, if the new one does not exist. |
+| `SANTA_PROFILES` | `local/profiles.json` | The children's profiles file. A `profiles.json` in the repository folder is used until you move it, if the new one does not exist. When set, the call log (`calls.json`) is kept next to this file, so each set of children has its own. |
 | `HF_HUB_OFFLINE` | `1` | Keeps the speech-model loader from contacting Hugging Face. The entry point sets it unless your shell or `local/santa.env` already does; `scripts/run-web.sh` sets it itself. Pocket TTS refuses to start unless it is `1`. |
 | `HF_HUB_DISABLE_TELEMETRY` | `1` | Turns off Hugging Face telemetry. Set by the entry point on the same terms. |
 | `PYTHONDONTWRITEBYTECODE` | `1` in `run-web.sh` | Set by `scripts/run-web.sh` so Python writes no bytecode files. |

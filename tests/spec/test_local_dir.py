@@ -47,6 +47,14 @@ def test_profiles_move_to_local_but_an_old_root_file_still_works(tmp_path, monke
     assert local.profiles_path() == tmp_path / "local" / "profiles.json"
 
 
+def test_the_call_log_follows_santa_profiles(tmp_path, monkeypatch):
+    monkeypatch.setattr(local, "LOCAL_DIR", tmp_path / "local")
+    assert local.calls_path(None) == tmp_path / "local" / "calls.json"
+    assert local.calls_path("") == tmp_path / "local" / "calls.json"
+    other = tmp_path / "second-family" / "profiles.json"
+    assert local.calls_path(str(other)) == tmp_path / "second-family" / "calls.json"
+
+
 def test_call_page_serves_your_picture_else_the_painting(tmp_path):
     from fastapi.testclient import TestClient
     from test_network_mode import app_for

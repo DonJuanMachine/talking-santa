@@ -172,8 +172,11 @@ SAFETY_RULES = [
                      r"\b(?:i am|i['’]m)\s+(?:an?\s+)?(?:ai|robot|computer|chatbot|language model|artificial)\b",
                      r"\b(?:i am|i['’]m)\s+(?:just|only)\s+an?\s+(?:computer|program|machine|robot)\b",
                      _BRAND_CLAIM]),
+    # "monster truck(s)" and "Monster Jam" (the truck show) are toys, not monsters (2026-11-25: a child who likes them
+    # got FALLBACK on every reply).
     ("blocklist", [r"\bkill(?:s|ed|ing)?\b", r"\bdead\b(?!-end)", r"\bdie\b(?!\s+(?:of\s+laughter|laughing))",
-                   r"\bdeath\b", r"\bblood(?:y)?\b", r"\bguns?\b", r"\bweapon", r"\bmonster", r"\bcoal\b",
+                   r"\bdeath\b", r"\bblood(?:y)?\b", r"\bguns?\b", r"\bweapon", r"\bmonster(?!s?[\s-]*(?:trucks?|jam)\b)",
+                   r"\bcoal\b",
                    r"\bdollars?\b", r"\bamazon\b"]),
 ]
 _SAFETY_RE = [(name, re.compile("|".join(pats), re.IGNORECASE)) for name, pats in SAFETY_RULES]

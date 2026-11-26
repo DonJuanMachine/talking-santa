@@ -72,11 +72,12 @@ certificates and the voice files are read from disk when Santa starts; the optio
 | `brain.py` | history + memory + reply; `reply_stream`, `reply_ex`, `remember`, `warm_up`, `end_call` |
 | `persona.py` | system prompt (edit here to tune Santa); facts note and conversation-arc note wordings |
 | `arc.py` | conversation arc: per-child stage machine that picks a short note for the current turn (pure logic) |
-| `gifts.py`, `songs.py`, `cues.py` | gift question, song requests, small word checks on what the child just said |
+| `gifts.py`, `guide.py`, `songs.py`, `cues.py` | gift question, conversation guide (hello, likes, nice list), song requests, small word checks on what the child just said |
 | `spec.py` | the one place where reply rules live: pure functions, no I/O |
 | `speech.py` | remove-only, prefix-only streaming filter, sentence by sentence |
 | `safety.py` | thin wrapper over `spec.py` and `speech.py` for callers of the filter |
 | `memory.py` | per-child facts in `local/profiles.json` (text only) |
+| `calllog.py` | when each registered child called, in `local/calls.json` (call page only; names and times) |
 | `local.py` | finds your files in `local/` |
 | `config.py` | central config, overridable by environment variables |
 
@@ -167,8 +168,16 @@ room for every call.
 - **Last call:** at Hang up (and after a silence hang-up), one line per registered child who spoke at least twice, made
   by the model from the child's words and checked like any fact. It replaces the previous one. It is not made when the
   connection drops.
+- **Call log** (`calllog.py`, call page only): `local/calls.json` keeps, per registered child, the dates and times of
+  their latest 50 calls, nothing else. A child is logged once per call when Santa has answered their 2nd turn (in
+  `_end_turn`, so a dropped connection still counts), with the time of their first turn. The log is read once when a
+  call starts, so a call never sees its own entry. `chat.py` builds `Santa` without `call_log=True`, so it never reads
+  or writes it.
 - **What the prompt receives:** every child's name and age in the system prompt, and the **active child's** last 8 facts,
-  nicknames and family names on the current turn.
+  nicknames and family names on the current turn, plus (call page) how many times that child called before and when the
+  last call was, in relative words (`CALLS_NOTE` in `persona.py`). With the conversation guide on (`guide.py`), the
+  call log goes on the child's first turn only, next to the hello note; then one likes note, which may name one of the
+  child's remembered likes or pets (never a wish). Both are one-shot notes on the current turn, like the gift question.
 - **Isolation** is therefore by prompt: another child's facts are not sent. It depends on the active speaker being right
   (section 5).
 - **Forget last** (`brain_adapter.py`) removes the facts the selected child's most recent turn added and saves twice so
@@ -297,7 +306,8 @@ fixed hold line. When the page reports the playback ended, the brain saves new f
   profile.
 
 ## 6. Data and privacy
-- Stored: per-child text facts in `local/profiles.json` (gitignored). Audio is not stored and the call page keeps no
+- Stored: per-child text facts in `local/profiles.json` and per-child call dates and times in `local/calls.json`
+  (both gitignored). Audio is not stored and the call page keeps no
   transcripts unless `--debug-audio` is on; the typed chat (`chat.py`) does save transcripts. The full table is in the
   README's [Data and privacy](../README.md#data-and-privacy).
 - Logs and `/status` hold numbers and reason codes; `/status` also lists the children's names, so in network mode it

@@ -5,7 +5,7 @@
     Emma: hi santa, I have a cat named Mittens
     Leo: i want a truck
     /who        show remembered facts
-    /forget     wipe all memory, the backups and the saved transcripts
+    /forget     wipe all memory, the backups, the call log and the saved transcripts
     /quit
 """
 import os
@@ -15,7 +15,7 @@ from santa import local
 
 local.load_env()  # your settings in local/santa.env, before santa.config reads the environment
 
-from santa import config, memory, persona  # noqa: E402
+from santa import calllog, config, memory, persona  # noqa: E402
 from santa.brain import Santa  # noqa: E402
 
 persona.use_world(local.santa_world())  # local/santa_world.txt, if you wrote one
@@ -53,6 +53,7 @@ def main() -> None:
             santa.profiles.clear()
             memory.save(santa.profiles)
             memory.remove_backup()
+            calllog.remove()   # the call page's log of who called when
             santa.log.clear()   # this session's text so far must not be saved as a transcript at quit
             removed = memory.remove_transcripts()
             print(f"  (memory wiped; {removed} transcript file{'' if removed == 1 else 's'} removed)")

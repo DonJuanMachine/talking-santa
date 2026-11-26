@@ -19,7 +19,7 @@ from typing import Iterator
 
 from openai import DefaultHttpxClient, OpenAI, Timeout
 
-from . import arc, config, cues, gifts, memory, persona, safety, songs, spec, speech
+from . import arc, calllog, config, cues, gifts, guide, memory, persona, safety, songs, spec, speech
 from .persona import build_system_prompt
 
 # A child's name: letters (accents ok), then letters/digits/'/-. e.g. Emma, Zoë, Mary-Kate
@@ -84,7 +84,8 @@ _SUMMARY_MAX_LINES = 8      # end_call: only a child's last few turns are shown 
 
 
 class Santa:
-    def __init__(self, model: str = config.MODEL, base_url: str = config.BASE_URL, client=None, profiles=None):
+    def __init__(self, model: str = config.MODEL, base_url: str = config.BASE_URL, client=None, profiles=None,
+                 call_log: bool = False):
         # trust_env=False: never route the model call through an HTTP proxy from the environment (I1).
         self.client = client if client is not None else OpenAI(
             base_url=base_url, api_key="not-needed", timeout=Timeout(config.REQUEST_TIMEOUT), max_retries=0,
@@ -106,6 +107,11 @@ class Santa:
         self.arc: arc.Arc | None = arc.Arc() if arc.enabled() else None
         # Gift question (santa/gifts.py): per child, this conversation only. Off when the arc is on.
         self.gifts: gifts.Gifts | None = gifts.Gifts() if gifts.enabled() else None
+        # Conversation guide (santa/guide.py): hello + "how are you" on a registered child's first turn, then one
+        # question about what they like. Per child, this conversation only. The nice-list note is for every child.
+        self.guide: guide.Guide | None = guide.Guide() if guide.turns_enabled() else None
+        self.nice_on = guide.enabled()
+        self._turn_guide: str | None = None   # the guide note the current turn carried (None on a song turn)
         # Time of day on every turn, from this Mac's clock (SANTA_TIME_NOTE=0 turns it off). Tests replace clock.
         self.time_note_on = os.getenv("SANTA_TIME_NOTE", "1").strip() != "0"
         self.clock = datetime.now
@@ -117,6 +123,13 @@ class Santa:
         self.summary_on = os.getenv("SANTA_CALL_SUMMARY", "1").strip() != "0"
         self.said: dict[str, list[str]] = {}
         self._call_ended = False
+        # Call log (santa/calllog.py): only a real call (the call page passes call_log=True; chat.py never does).
+        # past_calls is read once, at the start of the call, so this call's own entry never shows in its notes.
+        self.call_log_on = call_log and calllog.enabled()
+        self.past_calls: dict[str, list[datetime]] = calllog.load() if self.call_log_on else {}
+        self._call_turns: dict[str, int] = {}
+        self._call_first_at: dict[str, datetime] = {}
+        self._call_logged: set[str] = set()
         # "Ho ho ho" once: Santa laughs when he answers; after that only when the child sings or tells a joke.
         # SANTA_HO_ONCE=0 lets the model say it whenever it likes (the old behaviour).
         self.ho_once = os.getenv("SANTA_HO_ONCE", "1").strip() != "0"
@@ -187,22 +200,58 @@ class Santa:
         safe = safety.redact_private(text)
         label = f"{speaker}: {safe}" if speaker else safe
         first = not any(h["role"] == "user" for h in self.history)
-        note = (persona.time_note(self.clock())
-                if self.time_note_on and (first or cues.sounds_like_goodbye(text)) else "")
+        bye = cues.sounds_like_goodbye(text)
+        note = persona.time_note(self.clock(), goodbye=bye) if self.time_note_on and (first or bye) else ""
+        kind = self._guide_kind(speaker, text)
         if speaker and speaker in self.profiles:
             note += persona.facts_note(speaker, self.profiles[speaker].get("facts", []), self.profiles[speaker])
+            # With the guide on, the call log is told once, with the hello (so the welcome back is not repeated).
+            if self.call_log_on and (self.guide is None or kind == guide.HELLO):
+                note += persona.calls_note(speaker, self.past_calls.get(speaker, []), self.clock(),
+                                           calllog.MAX_PER_CHILD)
             if self.arc is not None:
                 note += self.arc.note(speaker)
+            if kind == guide.HELLO:
+                note += persona.hello_note(speaker, again=self.call_log_on and bool(self.past_calls.get(speaker)))
+            elif kind == guide.LIKES:
+                note += persona.likes_note(speaker, guide.pick_fact(self.profiles[speaker].get("facts", []),
+                                                                    self._like_seed(speaker)))
+        elif kind == guide.HELLO:   # a guest
+            note += persona.guest_hello_note()
         if self.gentle_on:
             key, sad = self._gift_key(speaker), cues.sounds_sad(text)
             if sad or self._gentle.get(self._child_key(key), 0) > 0:
                 note += persona.gentle_note(key or gifts.GUEST, sad)
         if self.gifts is not None:
             note += self.gifts.note(self._gift_key(speaker), text)
+        if self.nice_on and cues.talks_nice_list(text):
+            note += persona.nice_note(self._gift_key(speaker) or gifts.GUEST)
         start = self._window_start()
         messages = ([{"role": "system", "content": self.system_prompt()}] + self.history[start:]
                     + [{"role": "user", "content": label + note}])
         return messages, label, safe != text
+
+    def _guide_kind(self, speaker: str | None, text: str) -> str | None:
+        """The guide note this turn gets (guide.HELLO, guide.LIKES or None). Pure. A guest (not registered) gets the
+        hello only, once per call, in one shared slot. The likes question waits while the child is sad (or was a moment
+        ago) and on a turn that gets the gift question."""
+        if self.guide is None:
+            return None
+        if not speaker or speaker not in self.profiles:
+            return self.guide.kind(None)
+        k = self._child_key(speaker)
+        gentle = cues.sounds_sad(text) or (self.gentle_on and self._gentle.get(k, 0) > 0)
+        kind = self.guide.kind(speaker, gentle=gentle)
+        if kind == guide.LIKES and self.gifts is not None and self.gifts.due(speaker, text):
+            return None
+        return kind
+
+    def _like_seed(self, speaker: str) -> int:
+        """Which remembered like the likes question picks (guide.pick_fact). The number of earlier calls, so it changes
+        every call; but the call log keeps only the newest calllog.MAX_PER_CHILD, and chat.py (or SANTA_CALL_LOG=0) has
+        none, so then the date, which changes every day."""
+        n = len(self.past_calls.get(speaker, []))
+        return n if self.call_log_on and n < calllog.MAX_PER_CHILD else self.clock().toordinal()
 
     def _names(self, speaker: str | None) -> list[str]:
         """Names for the promise rule (P1-3: "I'll bring Emma a bike!"): the active child's name and registered
@@ -254,6 +303,7 @@ class Santa:
         # Build everything that can raise BEFORE touching history, so history keeps strict user/assistant alternation.
         messages, label, _redacted = self.build_messages(speaker, text)
         start = self._window_start()
+        self._turn_guide = None
         if self.songs_on:
             offer, self._song_offer = self._song_offer, None     # an offer lasts one turn
             who = self._child_key(self._gift_key(speaker))
@@ -273,6 +323,7 @@ class Santa:
                 (failed is None or _now() - failed >= config.WARMUP_RETRY_SECONDS):
             self.warm_up()
 
+        self._turn_guide = self._guide_kind(speaker, text)   # the note this model turn carries (songs carry none)
         legacy = safety.legacy()
         # child_turn: the child's own words (never the label or the gift-ask note), for the gift-turn rules (P1-3 part B)
         gate = speech.Gate(allow_ho=not self.ho_once or cues.sings_or_jokes(text), names=self._names(speaker),
@@ -379,12 +430,28 @@ class Santa:
             self.arc.advance(speaker, content)   # only what was actually spoken (never on FALLBACK)
         if self.gifts is not None and spoken:
             self.gifts.advance(self._gift_key(speaker), text, content)
+        if self.guide is not None and spoken:
+            self.guide.advance(self._gift_key(speaker), content, self._turn_guide)   # guests share one slot (None)
+        self._turn_guide = None
         if self.gentle_on and spoken:
             k = self._child_key(self._gift_key(speaker))
             self._gentle[k] = persona.GENTLE_TURNS if cues.sounds_sad(text) else max(0, self._gentle.get(k, 0) - 1)
         self.log.append(f"{label}\nSanta: {answer}\n")
         if self.summary_on and speaker and speaker in self.profiles and safety.redact_private(text) == text:
             self.said.setdefault(speaker, []).append(text)
+        if self.call_log_on and spoken and speaker and speaker in self.profiles:
+            self._log_call_turn(speaker)     # only answered turns: a call where Santa only said FALLBACK never happened
+
+    def _log_call_turn(self, speaker: str) -> None:
+        """Call log (call page only): count this registered child's answered turn; on their calllog.MIN_TURNS-th turn, log the
+        call once, with the time of their first turn. Logged here, not at Hang up, so a dropped call still counts."""
+        n = self._call_turns.get(speaker, 0) + 1
+        self._call_turns[speaker] = n
+        if n == 1:
+            self._call_first_at[speaker] = self.clock()
+        if n >= calllog.MIN_TURNS and speaker not in self._call_logged:
+            self._call_logged.add(speaker)
+            calllog.record(speaker, self._call_first_at[speaker])
 
     def _sing(self, speaker, text, label, start, key=None, offer_only=False) -> Iterator[str]:
         """The child asked for a song: Santa says a carol's first verse (fixed text, no model call). For a song he does
