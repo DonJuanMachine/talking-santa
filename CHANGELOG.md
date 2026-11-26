@@ -6,6 +6,16 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
 
 ## [Unreleased]
 
+### Guests get the hello too
+- A caller who is not registered went straight to "What toys do you like to play with?" with no hello or "how are you": the conversation guide's hello was for registered children only. A guest's first turn now gets it too (say hello, use the name if the child just gave it, ask how they are, nothing else), once per call; all guests share one slot, and guests still get no likes note. Live, 36 guest first turns from 6:30 to 9:40 PM: all 36 said hello and asked how the child is or how their day was, none mentioned bed or dreams. Changed: `santa/guide.py`, `santa/brain.py`, `santa/persona.py`, README, `docs/configuration.md`. Test: `tests/spec/test_guide.py`.
+
+### Fix: "monster trucks" made Santa repeat the fallback line; late hellos asked about bed and dreams
+- The safety blocklist stopped any word starting with "monster", so every reply about a child's monster trucks was replaced by "Santa is listening. Can you tell your grown-up too?" (live call: 6 of 12 turns). "Monster truck(s)" and "Monster Jam" are now allowed; any other "monster" is still stopped. Changed: `santa/spec.py`. Test: `tests/spec/test_spec.py`.
+- The first turn's time note carried the goodbye wording ("a cozy good night is fine", "\"sweet dreams\" is fine"), so a call after 9 PM opened with "Are you tucked into a cozy bed right now?" (7 of 8 probe calls) or a question about dreams. A hello now gets a hello-only note ("say hello, never good night", and no questions about bedtime, sleep or dreams); the good night and "sweet dreams" wording is on goodbye turns only (0 of 8 probe calls after the fix). Changed: `santa/persona.py`, `santa/brain.py`. Test: `tests/spec/test_guide.py`.
+
+### Fix: PIN could not be entered from another device
+- With `--network`, entering the PIN on an iPad (or any other device) answered "forbidden". Every response sent `Referrer-Policy: no-referrer`, so browsers posted the PIN form with `Origin: null`, which the VULN-004 check refuses as another site. The policy is now `same-origin`: still no referrer to other sites, and the form sends its real Origin. Changed: `santa/web/server.py`. Test: `tests/spec/test_unlock_origin.py`.
+
 ### Review fixes: conversation guide and call log
 - The nice-list note no longer fires on "I've been good!", the usual answer to Santa's new "how are you?". A plain "been good" now needs a list context ("this year", "for Santa"), and a bare "naughty" about someone else ("my dog is naughty") no longer counts.
 - The remembered like that Santa asks about now changes from day to day when the call count cannot rotate it: in the typed chat, with the call log off, or past the log's 50 calls per child.

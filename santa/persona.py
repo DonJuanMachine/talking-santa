@@ -257,10 +257,22 @@ def sweet_dreams_ok(hour: int) -> bool:
     return hour >= SWEET_DREAMS_FROM or hour < 5
 
 
-def time_note(now) -> str:
-    """`now` is a datetime (local time)."""
+# The call's first turn when it is not a goodbye: hello wording only. Live (2026-11-25, 10:29 PM): with the goodbye
+# wording ("a cozy good night is fine", "sweet dreams is fine") on the hello, Santa opened with "Are you tucked into a
+# cozy bed right now?" (7 of 8 probe calls) and asked a child about their dreams.
+HELLO_TIME_NOTE = ("\n(It is {part} right now: {clock} on {day}. Your hello should fit the time of day: {fit}. "
+                   "Do not ask about bedtime, sleep or dreams.)")
+_HELLO_FIT = {"morning": "say good morning", "afternoon": "say good afternoon", "evening": "say good evening",
+              "night": "say hello, never good night"}
+
+
+def time_note(now, goodbye: bool = True) -> str:
+    """`now` is a datetime (local time). `goodbye`: the child is saying goodbye (the good night / "sweet dreams" wording);
+    False on a hello, which gets HELLO_TIME_NOTE."""
     part = part_of_day(now.hour)
     clock = f"{now.hour % 12 or 12}:{now.minute:02d} {'AM' if now.hour < 12 else 'PM'}"
+    if not goodbye:
+        return HELLO_TIME_NOTE.format(part=part, clock=clock, day=now.strftime("%A"), fit=_HELLO_FIT[part])
     dreams = (SWEET_DREAMS.format(when="after 7 PM" if now.hour >= SWEET_DREAMS_FROM else "the middle of the night")
               if sweet_dreams_ok(now.hour) else "")
     return TIME_NOTE.format(part=part, clock=clock, day=now.strftime("%A"), fit=_FIT[part], dreams=dreams)
@@ -317,6 +329,11 @@ GUIDE_HELLO = ("\n(Santa's plan for this turn: this is {name}'s first turn talki
                "{name} by name.{again} If {name} already told you something, answer that warmly. Then ask how {name} "
                "is doing today, and ask nothing else.{safety})")
 GUIDE_AGAIN = " {name} has called you before, so tell {name} you are so happy to hear from {name} again."
+# A guest (not registered, guide.py): Santa may not know the name, so no "by name" and no welcome back.
+GUIDE_HELLO_GUEST = ("\n(Santa's plan for this turn: this is the child's first turn talking with you on this call. Say "
+                     "hello warmly, using the child's name if they just told you it. If the child already told you "
+                     "something, answer that warmly. Then ask how the child is doing today, and ask nothing else."
+                     "{safety})")
 GUIDE_LIKES = ("\n(Santa's plan for this turn: answer {name} warmly first. Then ask ONE easy question about something "
                "{name} likes, like a favorite toy, game, animal or food, or what {name} likes to play.{safety})")
 GUIDE_LIKES_FACT = ("\n(Santa's plan for this turn: answer {name} warmly first. Then ask ONE easy, happy question about "
@@ -327,6 +344,10 @@ GUIDE_LIKES_FACT = ("\n(Santa's plan for this turn: answer {name} warmly first. 
 NICE_NOTE = ("\n({name} is talking about the nice list. Every child is on your nice list, and {name} is too: say so "
              "happily right away, with no conditions. Never say \"if you are good\", \"keep being good\" or \"as long "
              "as\", and never say the words \"naughty list\".)")
+
+
+def guest_hello_note() -> str:
+    return GUIDE_HELLO_GUEST.format(safety=ARC_SAFETY.format(name="the child"))
 
 
 def hello_note(name: str, again: bool) -> str:

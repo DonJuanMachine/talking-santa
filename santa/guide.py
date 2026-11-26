@@ -7,6 +7,11 @@
          which one rotates from call to call (from day to day without the call log). Wishes ("wants a drawing pad") are never used: the gift question
          (santa/gifts.py) covers those, and asking about a wish invites a promise.
 
+A guest (a child who is not registered) gets the HELLO too, once per call, never LIKES: Santa has nothing remembered
+to ask about, and the system prompt already steers him to what children like. Without it, a guest's first reply went
+straight to "What toys do you like to play with?" with no hello or "how are you" (2026-11-25, Don). All guests share
+one slot (name None), as in the gift question.
+
 The nice-list note (persona.nice_note) is separate: any child, registered or not, who talks about the nice or naughty
 list is told yes, with no conditions (cues.talks_nice_list decides).
 
@@ -73,24 +78,28 @@ class Guide:
         self.kids: dict[str, ChildGuide] = {}
 
     @staticmethod
-    def _key(name: str) -> str:
-        return str(name).casefold()
+    def _key(name: str | None) -> str:
+        return "" if name is None else str(name).casefold()     # "": the guest slot (registered names are never empty)
 
-    def state(self, name: str) -> ChildGuide:
+    def state(self, name: str | None) -> ChildGuide:
         return self.kids.get(self._key(name)) or ChildGuide()
 
-    def kind(self, name: str, gentle: bool = False) -> str | None:
-        """Which note this registered child's NEXT turn gets (None = none). Pure. `gentle`: the child sounds sad now
-        or did a moment ago; the hello still comes (its safety suffix says comfort first), the likes question waits."""
+    def kind(self, name: str | None, gentle: bool = False) -> str | None:
+        """Which note this child's NEXT turn gets (None = none). Pure. `name` None is a guest: the hello only.
+        `gentle`: the child sounds sad now or did a moment ago; the hello still comes (its safety suffix says comfort
+        first), the likes question waits."""
         st = self.state(name)
         if not st.hello_done:
             return HELLO
+        if name is None:
+            return None
         if not st.likes_done and st.likes_tries < LIKES_TRIES and not gentle:
             return LIKES
         return None
 
-    def advance(self, name: str, spoken: str, sent: str | None) -> None:
-        """Record one spoken turn of `name` that carried note `sent` (None: no guide note, e.g. a song)."""
+    def advance(self, name: str | None, spoken: str, sent: str | None) -> None:
+        """Record one spoken turn of `name` (None: a guest) that carried note `sent` (None: no guide note, e.g. a
+        song)."""
         st = self.kids.setdefault(self._key(name), ChildGuide())
         if sent == HELLO:
             st.hello_done = True

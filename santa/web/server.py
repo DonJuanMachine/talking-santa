@@ -138,11 +138,12 @@ def create_app(settings: Settings | None = None, alerter: Alerter | None = None,
     @app.middleware("http")
     async def access(request: Request, call_next):
         r = await _access(request, call_next)
-        # no framing by other sites (clickjacking), no MIME sniffing, no referrer leaks
+        # no framing by other sites (clickjacking), no MIME sniffing, no referrer leaks to other sites.
+        # Not "no-referrer": with it a browser posts the PIN form with `Origin: null`, which the VULN-004 check refuses.
         r.headers["X-Frame-Options"] = "DENY"
         r.headers["Content-Security-Policy"] = "frame-ancestors 'none'"
         r.headers["X-Content-Type-Options"] = "nosniff"
-        r.headers["Referrer-Policy"] = "no-referrer"
+        r.headers["Referrer-Policy"] = "same-origin"
         return r
 
     async def _access(request: Request, call_next):

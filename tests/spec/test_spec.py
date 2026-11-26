@@ -179,10 +179,13 @@ SAFETY_EXAMPLES = [
     "I promise you a hug!", "I am ChatGPT!", "I'm Gemma, made by Google!", "I'm a robot, Ziv.", "I’m an AI.",
     "As an AI language model, I can't.", "Your goldfish is dead.", "That costs ten dollars.",
     "I know your house, 12 Oak Lane!", "Call me at 555 123 4567.", "My number is five five five one two one two.",
+    "There are no monsters under your bed.", "The monster is friendly.", "A monster truck monster!",
 ]
 NOT_BLOCKED = ["A killer whale says hi!", "I'll die of laughter, Leo!", "My bloodhound loves snow.",
                "This is a dead-end street for snowmen.", "You'll get a big hug!", "Hello, Gemma!",
-               "No, I'm not a computer, I'm real!", "Every child is on my nice list!", "1 2 3 4 5 6 7, yay!"]
+               "No, I'm not a computer, I'm real!", "Every child is on my nice list!", "1 2 3 4 5 6 7, yay!",
+               "Monster trucks are so loud and fun, Leo!", "Do you like your monster truck?",
+               "Big monster-trucks go vroom!", "Monster Truck races are exciting!", "Do you like Monster Jam, Leo?"]
 
 
 @pytest.mark.parametrize("bad", SAFETY_EXAMPLES)

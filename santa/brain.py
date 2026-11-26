@@ -200,8 +200,8 @@ class Santa:
         safe = safety.redact_private(text)
         label = f"{speaker}: {safe}" if speaker else safe
         first = not any(h["role"] == "user" for h in self.history)
-        note = (persona.time_note(self.clock())
-                if self.time_note_on and (first or cues.sounds_like_goodbye(text)) else "")
+        bye = cues.sounds_like_goodbye(text)
+        note = persona.time_note(self.clock(), goodbye=bye) if self.time_note_on and (first or bye) else ""
         kind = self._guide_kind(speaker, text)
         if speaker and speaker in self.profiles:
             note += persona.facts_note(speaker, self.profiles[speaker].get("facts", []), self.profiles[speaker])
@@ -216,6 +216,8 @@ class Santa:
             elif kind == guide.LIKES:
                 note += persona.likes_note(speaker, guide.pick_fact(self.profiles[speaker].get("facts", []),
                                                                     self._like_seed(speaker)))
+        elif kind == guide.HELLO:   # a guest
+            note += persona.guest_hello_note()
         if self.gentle_on:
             key, sad = self._gift_key(speaker), cues.sounds_sad(text)
             if sad or self._gentle.get(self._child_key(key), 0) > 0:
@@ -230,10 +232,13 @@ class Santa:
         return messages, label, safe != text
 
     def _guide_kind(self, speaker: str | None, text: str) -> str | None:
-        """The guide note this turn gets (guide.HELLO, guide.LIKES or None). Pure. Registered children only. The likes
-        question waits while the child is sad (or was a moment ago) and on a turn that gets the gift question."""
-        if self.guide is None or not speaker or speaker not in self.profiles:
+        """The guide note this turn gets (guide.HELLO, guide.LIKES or None). Pure. A guest (not registered) gets the
+        hello only, once per call, in one shared slot. The likes question waits while the child is sad (or was a moment
+        ago) and on a turn that gets the gift question."""
+        if self.guide is None:
             return None
+        if not speaker or speaker not in self.profiles:
+            return self.guide.kind(None)
         k = self._child_key(speaker)
         gentle = cues.sounds_sad(text) or (self.gentle_on and self._gentle.get(k, 0) > 0)
         kind = self.guide.kind(speaker, gentle=gentle)
@@ -425,8 +430,8 @@ class Santa:
             self.arc.advance(speaker, content)   # only what was actually spoken (never on FALLBACK)
         if self.gifts is not None and spoken:
             self.gifts.advance(self._gift_key(speaker), text, content)
-        if self.guide is not None and spoken and speaker and speaker in self.profiles:
-            self.guide.advance(speaker, content, self._turn_guide)
+        if self.guide is not None and spoken:
+            self.guide.advance(self._gift_key(speaker), content, self._turn_guide)   # guests share one slot (None)
         self._turn_guide = None
         if self.gentle_on and spoken:
             k = self._child_key(self._gift_key(speaker))

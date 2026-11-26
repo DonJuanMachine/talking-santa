@@ -72,11 +72,32 @@ def test_each_child_gets_their_own_hello():
     assert "Say hello to Leo by name" in leo and "how Leo is doing today" in leo
 
 
-def test_guests_and_unregistered_names_get_no_hello_or_likes():
+GUEST_HELLO_MARK = "ask how the child is doing today"
+
+
+@pytest.mark.parametrize("first", [None, "Zed"])
+def test_a_guest_gets_the_hello_once_and_never_likes(first):
+    """2026-11-25 (Don, calling as a guest): Santa went straight to "What toys do you like?" with no hello."""
     s = santa()
-    for speaker in (None, "Zed", None, "Zed"):
-        turn = say(s, speaker)
-        assert "Santa's plan" not in turn
+    turn = say(s, first, "Don")
+    assert GUEST_HELLO_MARK in turn and "ask nothing else" in turn and "comfort the child first" in turn
+    assert "by name" not in turn and "again" not in turn and "call log" not in turn
+    for speaker in (None, "Zed", None):                          # guests share one slot: once per call
+        later = say(s, speaker)
+        assert GUEST_HELLO_MARK not in later and LIKES_MARK not in later
+
+
+def test_a_guest_hello_does_not_use_up_a_registered_childs_hello():
+    s = santa()
+    assert GUEST_HELLO_MARK in say(s, None)
+    assert HELLO_MARK in say(s, "Emma", "I'm Emma")
+    assert GUEST_HELLO_MARK not in say(s, None)
+
+
+def test_a_failed_turn_does_not_use_up_the_guest_hello():
+    s = santa(replies=(RuntimeError("runner down"), PLAIN))
+    say(s, None)
+    assert GUEST_HELLO_MARK in say(s, None)
 
 
 def test_a_failed_turn_does_not_use_up_the_hello():
@@ -280,4 +301,21 @@ def test_the_sweet_dreams_note_never_says_after_7_pm_after_midnight():
 def test_sweet_dreams_note_on_an_evening_goodbye():
     s = santa(now=datetime(2026, 11, 25, 19, 45))
     say(s, "Emma")
+    assert "\"sweet dreams\" is fine in a goodbye" in say(s, "Emma", "bye bye Santa")
+
+
+@pytest.mark.parametrize("hour", [19, 22, 2])
+@pytest.mark.parametrize("who", ["Emma", None])
+def test_a_late_hello_has_no_bedtime_or_dreams_wording(hour, who):
+    """Live 2026-11-25, 10:29 PM: the goodbye wording on the hello made Santa open with bed and dreams."""
+    s = santa(now=datetime(2026, 11, 25, hour, 29))
+    first = say(s, who, "hi Santa, my name is Mikey")
+    assert "Your hello should fit the time of day" in first and "Do not ask about bedtime, sleep or dreams" in first
+    assert "sweet dreams" not in first and "cozy good night" not in first
+    if hour >= 21 or hour < 5:
+        assert "never good night" in first
+
+
+def test_a_first_turn_that_is_a_goodbye_gets_the_goodbye_note():
+    s = santa(now=datetime(2026, 11, 25, 19, 45))
     assert "\"sweet dreams\" is fine in a goodbye" in say(s, "Emma", "bye bye Santa")

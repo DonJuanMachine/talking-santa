@@ -154,8 +154,9 @@ What Santa does, and how to change it (set values in `local/santa.env`; see [Cus
   `SANTA_ARC=1`. Guests share one slot. Code: `santa/gifts.py`.
 - **Conversation guide** (on by default): on a registered child's first turn of a call (usually "I'm Emma"), Santa is
   told to say hello by name, to say he is so happy to hear from them again if they called before (call page), and to
-  ask how they are, nothing else. On the next turn he asks one question about something the child likes. If the
-  child's profile has a remembered like or pet ("likes snow angels", "has a cat named Mittens"), he asks about that,
+  ask how they are, nothing else. A guest (a child who is not registered) gets the same hello and "how are you",
+  once per call, without the welcome back. On the next turn a registered child is asked one question about something
+  the child likes. If the child's profile has a remembered like or pet ("likes snow angels", "has a cat named Mittens"), he asks about that,
   one per call, a different one each call (each day without the call log); wishes are never used, the gift question
   covers those. The likes question waits while the child is sad and gives way to the gift question. Any child,
   registered or not, who asks about the nice or naughty list is told yes, they are on the nice list, with no
