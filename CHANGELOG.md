@@ -6,6 +6,17 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
 
 ## [Unreleased]
 
+### Review fixes: call log, conversation guide, docs
+- The pre-commit hook now refuses `calls.json*` (children's names and call times) at any depth, even with `git add -f`, as it does `profiles.json*`. Re-run `scripts/install-git-hooks.sh` to install it. Test: `tests/review/test_precommit_hook.py`.
+- A `calls.json` that cannot be read (permissions, a disk error) is no longer treated as empty and overwritten at the next call; the call goes on without the log and nothing is written. A broken log whose `.corrupt` copy cannot be made is not overwritten either.
+- Hand-edited call times in another ISO form ("2026-11-22T18:05:00", "2026-11-22 18:05") are read, instead of being dropped when the log is next rewritten.
+- After midnight, a call from before midnight is "this evening" or "this morning", not "earlier today".
+- The gift question never lands on the hello turn (which says "ask nothing else"); with `SANTA_GIFT_ASK_TURN=1` it comes on the 2nd turn.
+- The likes question is done only when Santa asks about what the child likes or about the remembered thing; any other question ("Was it cold outside?") used to end it for the call.
+- A reply cut off by Hang up no longer counts toward the call log or uses up the hello or likes note.
+- SECURITY.md now says `Referrer-Policy: same-origin` (it still said `no-referrer`).
+- Changed: `scripts/git-hooks/pre-commit`, `santa/calllog.py`, `santa/persona.py`, `santa/brain.py`, `santa/gifts.py`, `santa/guide.py`, `santa/web/brain_adapter.py`, `SECURITY.md`, README, `docs/configuration.md`. Tests: `tests/review/test_precommit_hook.py`, `tests/spec/test_call_log.py`, `tests/spec/test_guide.py`, `tests/spec/test_p1_2_safety_tail.py`.
+
 ### Guests get the hello too
 - A caller who is not registered went straight to "What toys do you like to play with?" with no hello or "how are you": the conversation guide's hello was for registered children only. A guest's first turn now gets it too (say hello, use the name if the child just gave it, ask how they are, nothing else), once per call; all guests share one slot, and guests still get no likes note. Live, 36 guest first turns from 6:30 to 9:40 PM: all 36 said hello and asked how the child is or how their day was, none mentioned bed or dreams. Changed: `santa/guide.py`, `santa/brain.py`, `santa/persona.py`, README, `docs/configuration.md`. Test: `tests/spec/test_guide.py`.
 

@@ -142,6 +142,7 @@ class SantaBrain:
             turn.cancel = cancel
         self.client._state.turn = turn
         info = ReplyInfo()
+        self.santa.cancelled = turn.cancel.is_set       # a cut-off reply does not count as heard (call log, guide)
         try:
             if speaker:
                 self.santa.set_active(speaker)
@@ -154,6 +155,7 @@ class SantaBrain:
                 on_sentence(s)
         finally:
             self.client._state.turn = None
+            self.santa.cancelled = lambda: False
         r = self.santa.last_reply
         info.cancelled = info.cancelled or turn.cancel.is_set()
         info.fallback, info.reason, info.ttft = r.fallback, r.reason, r.ttft

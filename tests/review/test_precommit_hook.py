@@ -101,6 +101,10 @@ BLOCKED = [
     ("profiles.json", "profiles.json*"),
     ("santa/web/profiles.json", "profiles.json*"),
     ("santa/profiles.json.bak", "profiles.json*"),
+    ("calls.json", "calls.json*"),                  # the call log: children's names and call times
+    ("fam2/calls.json", "calls.json*"),             # next to a SANTA_PROFILES file outside local/
+    ("fam2/calls.json.corrupt.2", "calls.json*"),
+    ("fam2/calls.json.tmp", "calls.json*"),
     ("local/settings.txt", "local/"),
     ("deep/er/local/a.txt", "local/"),
     ("transcripts/a.txt", "transcripts/"),

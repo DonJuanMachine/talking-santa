@@ -130,6 +130,28 @@ def test_second_turn_asks_about_a_remembered_like_never_a_wish():
     assert LIKES_MARK not in say(s, "Emma")                      # Santa asked: done for this call
 
 
+def test_an_unrelated_question_does_not_end_the_likes_question():
+    """Review 2026-11-25: any "?" counted, so "Was it cold outside?" ended the likes question for the call."""
+    s = santa(replies=(PLAIN, "Oh, a snowman! Was it cold outside?", "Did you make snow angels today?", PLAIN))
+    say(s, "Emma")
+    say(s, "Emma", "I made a snowman")
+    assert LIKES_MARK in say(s, "Emma")                          # tried again
+    assert LIKES_MARK not in say(s, "Emma")                      # asked about the snow angels: done
+
+
+@pytest.mark.parametrize("spoken, fact, asked", [
+    ("What do you like to play?", None, True),
+    ("What is your favorite toy?", None, True),
+    ("Did you make snow angels today?", "likes snow angels", True),
+    ("How is Mittens doing?", "has a cat named Mittens", True),
+    ("Was it cold outside?", "likes snow angels", False),
+    ("Wow, I like that! Tell me more.", None, False),            # no question
+    ("Did you have a good day?", None, False),
+])
+def test_asked_about_likes(spoken, fact, asked):
+    assert guide.asked_about_likes(spoken, fact) is asked
+
+
 def test_without_a_remembered_like_the_question_is_general():
     s = santa()
     say(s, "Leo")
@@ -159,6 +181,18 @@ def test_the_gift_question_wins_when_both_are_due(monkeypatch):
     say(s, "Leo")
     turn = say(s, "Leo")
     assert "Christmas wish" in turn and LIKES_MARK not in turn
+
+
+@pytest.mark.parametrize("who", ["Emma", None])
+def test_the_gift_question_waits_for_the_hello(monkeypatch, who):
+    """Review 2026-11-25: with SANTA_GIFT_ASK_TURN=1 the hello ("ask nothing else") and the gift question were on the
+    same turn. The gift question now comes on the next turn, and the held turn is not counted as a try."""
+    monkeypatch.setattr(gifts, "ASK_AT_TURN", 1)
+    s = santa()
+    first = say(s, who)
+    assert "first turn talking with you" in first and "Christmas wish" not in first
+    assert s.gifts.state(who).tries == 0
+    assert "Christmas wish" in say(s, who)
 
 
 def test_the_remembered_like_rotates_from_call_to_call():

@@ -47,6 +47,24 @@ def turns_enabled() -> bool:
     return enabled() and not arc.enabled()
 
 
+# Did Santa ask the likes question? A question sentence about liking or playing, or one that names the remembered thing.
+# Any "?" used to count, so "Was it cold outside?" ended the likes question for the call (review 2026-11-25).
+_QUESTION = re.compile(r"[^.!?]*\?")
+_LIKE_WORDS = re.compile(r"\b(like|likes|love|loves|favou?rite|play|playing|enjoy|fun)\b", re.I)
+_FACT_STOP = {"likes", "loves", "enjoys", "favorite", "favourite", "has", "have", "named", "called", "with", "and",
+              "the", "pet", "pets", "two", "three", "very", "much", "lots", "playing", "play"}
+
+
+def asked_about_likes(spoken: str, fact: str | None = None) -> bool:
+    """True if one of Santa's questions is about what the child likes, or names a word of `fact` ("snow angels",
+    "Mittens")."""
+    words = {w for w in re.findall(r"[a-z']+", (fact or "").lower()) if len(w) > 2 and w not in _FACT_STOP}
+    for q in _QUESTION.findall(spoken or ""):
+        if _LIKE_WORDS.search(q) or words & set(re.findall(r"[a-z']+", q.lower())):
+            return True
+    return False
+
+
 def like_facts(facts) -> list[str]:
     """The child's remembered likes and pets, newest first."""
     out = []
@@ -97,12 +115,12 @@ class Guide:
             return LIKES
         return None
 
-    def advance(self, name: str | None, spoken: str, sent: str | None) -> None:
+    def advance(self, name: str | None, spoken: str, sent: str | None, fact: str | None = None) -> None:
         """Record one spoken turn of `name` (None: a guest) that carried note `sent` (None: no guide note, e.g. a
-        song)."""
+        song). `fact`: the remembered like that a LIKES note asked about, if any."""
         st = self.kids.setdefault(self._key(name), ChildGuide())
         if sent == HELLO:
             st.hello_done = True
         elif sent == LIKES:
             st.likes_tries += 1
-            st.likes_done = st.likes_done or "?" in spoken
+            st.likes_done = st.likes_done or asked_about_likes(spoken, fact)

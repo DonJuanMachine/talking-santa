@@ -28,6 +28,7 @@ private_rule() {
   shopt -s nocasematch
   case "$p" in
     */profiles.json*)            echo 'profiles.json*' ;;
+    */calls.json*)               echo 'calls.json*' ;;
     */local/*)                   echo 'local/' ;;
     */transcripts/*)             echo 'transcripts/' ;;
     */.env.example)              return 1 ;;
