@@ -6,6 +6,12 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
 
 ## [Unreleased]
 
+### Start script: Docker open but its engine not responding
+- `scripts/start-santa.sh` no longer sits at "waiting for Docker" when Docker Desktop is open but its engine is broken. Seen on a real Mac: Model Runner answered, but every `docker info` took about a minute and then failed (HTTP 500), so the script said "Docker Desktop is not running", offered to start it, and printed no progress, because the wait counted only its own 2-second sleeps, not the minute each hung check took.
+- Every Docker check now has a time limit (`docker info` 15 s, `SANTA_DOCKER_CHECK_S`; `docker model` and `docker desktop` commands 10 to 180 s), and waits count clock time. The script asks Docker Desktop for its state: when it is open but the engine does not answer, it says so and offers `docker desktop restart`; when it is still starting, it waits without asking; when it is stopped, it offers to start it as before.
+- `scripts/stop-santa.sh` uses the same time limit and says when the engine is not responding, since the model may then still be in memory.
+- Test: `tests/spec/test_start_docker.py` (a fake `docker`; nothing starts Docker or Santa).
+
 ### README
 - "What you need" now gives the memory needed: an Apple silicon Mac with 16 GB or more. The language model uses about 5 GB while it runs, and speech recognition and the voice under 1 GB more; replies may come more slowly on older chips. Estimated from the model's size; tested only on the 32 GB Mac named there.
 

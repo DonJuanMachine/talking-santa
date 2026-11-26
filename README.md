@@ -119,6 +119,9 @@ ends a call.
 - `scripts/start-santa.sh` offers to start Docker Desktop, turn on Model Runner (port 12434), download the model, and
   unload other models. Loading two big models at once causes `Compute error` (Metal out of memory); run
   `docker model unload --all` before switching models.
+- Docker Desktop can be open while its engine does not answer (`docker info` hangs, then fails). The start script then
+  says "Docker Desktop is open (running), but its engine is not responding" and offers to restart Docker Desktop; you
+  can also restart it yourself with `docker desktop restart` or from the whale menu.
 
 ## Using the call page
 
