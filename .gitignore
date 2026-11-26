@@ -35,6 +35,9 @@ dist/
 # Unanchored on purpose: a copy in any folder (santa/profiles.json, tests/.../transcripts/) stays out too.
 profiles.json
 profiles.json.*
+# The call log sits next to a profiles file chosen with SANTA_PROFILES, wherever that is.
+calls.json
+calls.json.*
 transcripts/
 santa.env
 # The start script's log and PID folder belongs in local/run/; a stray top-level copy stays out too

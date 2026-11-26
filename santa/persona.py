@@ -1,4 +1,5 @@
 """Santa's system prompt. Edit this file to tune his personality."""
+from datetime import timedelta
 
 SANTA_PROMPT = """\
 You are Santa Claus, talking out loud with very young children (ages 2 to 5) at Christmas. You are warm, gentle, jolly and a little silly.
@@ -249,7 +250,7 @@ def part_of_day(hour: int) -> str:
 # "Sweet dreams" (2026-11-25, Don): only from 7 PM (and through the night, until 5 AM), only in a goodbye. The time note
 # is on the first turn and goodbye turns only, which is where a goodbye happens.
 SWEET_DREAMS_FROM = 19
-SWEET_DREAMS = " It is after 7 PM, so \"sweet dreams\" is fine in a goodbye."
+SWEET_DREAMS = " It is {when}, so \"sweet dreams\" is fine in a goodbye."
 
 
 def sweet_dreams_ok(hour: int) -> bool:
@@ -260,7 +261,8 @@ def time_note(now) -> str:
     """`now` is a datetime (local time)."""
     part = part_of_day(now.hour)
     clock = f"{now.hour % 12 or 12}:{now.minute:02d} {'AM' if now.hour < 12 else 'PM'}"
-    dreams = SWEET_DREAMS if sweet_dreams_ok(now.hour) else ""
+    dreams = (SWEET_DREAMS.format(when="after 7 PM" if now.hour >= SWEET_DREAMS_FROM else "the middle of the night")
+              if sweet_dreams_ok(now.hour) else "")
     return TIME_NOTE.format(part=part, clock=clock, day=now.strftime("%A"), fit=_FIT[part], dreams=dreams)
 
 
@@ -271,18 +273,27 @@ CALLS_NOTE = ("\n(Santa's call log: you talked with {name} on the phone before, 
               "every turn, and never say a date.)")
 
 
+_NIGHT_ENDS = timedelta(hours=5)   # part_of_day: "night" runs from 9 PM to 5 AM
+
+
+def _day(t):
+    """The day a time belongs to: 1 AM is still the night of the day before."""
+    return (t - _NIGHT_ENDS).date()
+
+
 def _when(last, now) -> str:
     part = part_of_day(last.hour)
-    days = (now.date() - last.date()).days
-    if days < 0:
+    if last > now:
         return "recently"
+    days = (_day(now) - _day(last)).days
     if days == 0:
-        return "earlier today" if part == part_of_day(now.hour) else ("last night" if part == "night"
-                                                                       else f"earlier today, in the {part}")
+        if part == part_of_day(now.hour):
+            return "earlier tonight" if part == "night" else "earlier today"
+        return f"earlier today, in the {part}"
     if days == 1:
         return "last night" if part == "night" else f"yesterday {part}"
     if days < 7:
-        return f"{days} days ago, on {last.strftime('%A')} {part}"
+        return f"{days} days ago, on {(last - _NIGHT_ENDS).strftime('%A')} {part}"
     if days < 14:
         return f"{days} days ago"
     if days < 60:

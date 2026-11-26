@@ -24,7 +24,8 @@ IDLE_REWARM_SECONDS = float(os.getenv("SANTA_IDLE_REWARM", "300"))
 # Personal files live in local/ (gitignored; see santa/local.py).
 PROFILES_PATH = Path(os.getenv("SANTA_PROFILES", str(local.profiles_path())))
 TRANSCRIPT_DIR = local.LOCAL_DIR / "transcripts"
-CALLS_PATH = local.LOCAL_DIR / "calls.json"     # call page only: when each registered child called (santa/calllog.py)
+# Call page only: when each registered child called (santa/calllog.py). Next to the profiles when SANTA_PROFILES is set.
+CALLS_PATH = local.calls_path(os.getenv("SANTA_PROFILES"))
 
 # Generation settings tuned for short, calm, kid-friendly replies.
 TEMPERATURE = float(os.getenv("SANTA_TEMP", "0.7"))

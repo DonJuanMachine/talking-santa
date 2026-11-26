@@ -169,9 +169,10 @@ room for every call.
   by the model from the child's words and checked like any fact. It replaces the previous one. It is not made when the
   connection drops.
 - **Call log** (`calllog.py`, call page only): `local/calls.json` keeps, per registered child, the dates and times of
-  their latest 50 calls, nothing else. A child is logged once per call when their 2nd turn ends (in `_end_turn`, so a
-  dropped connection still counts), with the time of their first turn. The log is read once when a call starts, so a
-  call never sees its own entry. `chat.py` builds `Santa` without `call_log=True`, so it never reads or writes it.
+  their latest 50 calls, nothing else. A child is logged once per call when Santa has answered their 2nd turn (in
+  `_end_turn`, so a dropped connection still counts), with the time of their first turn. The log is read once when a
+  call starts, so a call never sees its own entry. `chat.py` builds `Santa` without `call_log=True`, so it never reads
+  or writes it.
 - **What the prompt receives:** every child's name and age in the system prompt, and the **active child's** last 8 facts,
   nicknames and family names on the current turn, plus (call page) how many times that child called before and when the
   last call was, in relative words (`CALLS_NOTE` in `persona.py`). With the conversation guide on (`guide.py`), the

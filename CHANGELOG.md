@@ -6,9 +6,19 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
 
 ## [Unreleased]
 
+### Review fixes: conversation guide and call log
+- The nice-list note no longer fires on "I've been good!", the usual answer to Santa's new "how are you?". A plain "been good" now needs a list context ("this year", "for Santa"), and a bare "naughty" about someone else ("my dog is naughty") no longer counts.
+- The remembered like that Santa asks about now changes from day to day when the call count cannot rotate it: in the typed chat, with the call log off, or past the log's 50 calls per child.
+- Between midnight and 5 AM the time note says "It is the middle of the night", not "It is after 7 PM".
+- Relative call times count a time after midnight as the night before: a 1 AM call seen at 11 PM the same date is "last night", not "earlier today", and 1:30 AM on Tuesday is "Monday night".
+- A call is logged only when Santa answered the child's 2nd turn. Turns where he only said the fallback line (model down) no longer count, so he never welcomes a child back for a call that never happened.
+- A second broken `calls.json` no longer overwrites the copy of the first: copies go to `calls.json.corrupt`, `.corrupt.2`, and so on, a file already kept is not copied twice, and `/forget` deletes them all.
+- With `SANTA_PROFILES` set, the call log is kept next to that profiles file, so each set of children has its own. `calls.json` and its copies are now gitignored in any folder.
+- Changed: `santa/cues.py`, `santa/brain.py`, `santa/persona.py`, `santa/calllog.py`, `santa/local.py`, `santa/config.py`, `santa/guide.py`, `.gitignore`, README, `docs/architecture.md`, `docs/configuration.md`. Tests: `tests/spec/test_guide.py`, `tests/spec/test_call_log.py`, `tests/spec/test_local_dir.py`, `tests/review/test_gitignore_private.py`.
+
 ### Conversation guide: hello, likes, nice list
 - On a registered child's first turn of a call, Santa is told to say hello by name, to say he is so happy to hear from them again if they called before (call page), and to ask how they are, nothing else. With the guide on, the call log goes on that first turn only, so the welcome back is not repeated.
-- On the next turn he asks one question about something the child likes. If the profile has a remembered like or pet ("likes snow angels", "has a cat named Mittens"), he asks about that one, at most once per call, rotating from call to call. Wishes are never used. The likes question waits while the child is sad and gives way to the gift question.
+- On the next turn he asks one question about something the child likes. If the profile has a remembered like or pet ("likes snow angels", "has a cat named Mittens"), he asks about that one, at most once per call, rotating from call to call (from day to day in the typed chat, with the call log off, or past the log's 50 calls). Wishes are never used. The likes question waits while the child is sad and gives way to the gift question.
 - Any child, registered or not, who talks about the nice or naughty list is told yes, they are on the nice list, with no conditions. The note forbids the words "naughty list", because the output filter stops any reply that says them.
 - New rules: ask mostly about what children like; never ask about their dreams unless the child brings dreams up ("dream gift" is fine); say "sweet dreams" only when the turn's note allows it, which the time note does from 7 PM to 5 AM.
 - `SANTA_GUIDE=0` turns the notes off (the call log then goes back to every turn). Hello and likes are off when `SANTA_ARC=1`.

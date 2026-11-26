@@ -158,13 +158,54 @@ def test_the_call_count_picks_the_fact():
     assert "remember about Emma: likes dinosaurs" in say(s, "Emma")   # 1 earlier call -> the second-newest
 
 
+TWO_LIKES = {"Emma": {"age": 4, "facts": ["likes dinosaurs", "loves pancakes"]}}
+
+
+def _liked(**kw) -> str:
+    s = santa(kids=TWO_LIKES, **kw)
+    say(s, "Emma")
+    return "dinosaurs" if "remember about Emma: likes dinosaurs" in say(s, "Emma") else "pancakes"
+
+
+def test_without_the_call_log_the_like_changes_from_day_to_day():
+    days = [_liked(call_log=False, now=NOW + timedelta(days=d)) for d in range(4)]
+    assert set(days) == {"dinosaurs", "pancakes"} and all(a != b for a, b in zip(days, days[1:]))
+
+
+def test_at_the_call_log_cap_the_like_still_changes_from_day_to_day():
+    for i in range(calllog.MAX_PER_CHILD):
+        calllog.record("Emma", NOW - timedelta(days=60 - i))
+    days = [_liked(call_log=True, now=NOW + timedelta(days=d)) for d in range(3)]
+    assert days[0] != days[1] and days[1] != days[2]
+
+
+def test_a_first_logged_call_uses_the_call_count():
+    assert _liked(call_log=True) == "pancakes"                          # 0 earlier calls -> the newest
+
+
 # -- nice list ------------------------------------------------------------------------------------------------------
 @pytest.mark.parametrize("text, hit", [
     ("am I on the nice list?", True), ("Am I on the naughty list", True), ("I've been good this year", True),
-    ("have I been good?", True), ("was I nice", True), ("my brother is naughty", True), ("I’m good this year", True),
-    ("I'm good", False), ("am I good at drawing", False), ("it's been good", False), ("I like lists", False)])
+    ("have I been good?", True), ("was I nice", True), ("I’m good this year", True), ("am I naughty?", True),
+    ("I've been naughty", True), ("I'm not naughty", True), ("naughty or nice?", True),
+    ("I've been really good for Santa", True), ("have I been good enough", True),
+    ("I'm good", False), ("am I good at drawing", False), ("it's been good", False), ("I like lists", False),
+    ("my dog is naughty", False), ("my brother was naughty today", False)])
 def test_nice_list_cue(text, hit):
     assert cues.talks_nice_list(text) is hit
+
+
+@pytest.mark.parametrize("text", ["I've been good!", "I've been good", "i have been good", "I've been really good",
+                                  "good", "I'm good thanks", "I'm very good", "I've been good at swimming",
+                                  "I've been nice to my sister", "I was good at school", "fine", "I've been sick"])
+def test_answers_to_how_are_you_are_not_about_the_nice_list(text):
+    assert not cues.talks_nice_list(text)
+
+
+def test_ive_been_good_after_the_hello_gets_no_nice_list_note():
+    s = santa()
+    say(s, "Emma", "I'm Emma")
+    assert "nice list" not in say(s, "Emma", "I've been good!")
 
 
 def test_any_child_asking_about_the_nice_list_hears_yes_with_no_conditions():
@@ -228,6 +269,12 @@ def test_sweet_dreams_only_from_7_pm(hour, ok):
     late = datetime(2026, 11, 25, hour, 59 if hour == 18 else 0)
     assert ("\"sweet dreams\" is fine" in persona.time_note(late)) is ok
     assert persona.time_note(late).endswith(".)")
+
+
+def test_the_sweet_dreams_note_never_says_after_7_pm_after_midnight():
+    assert "It is after 7 PM" in persona.time_note(datetime(2026, 11, 25, 22, 0))
+    late = persona.time_note(datetime(2026, 11, 26, 2, 15))
+    assert "2:15 AM" in late and "7 PM" not in late and "It is the middle of the night, so" in late
 
 
 def test_sweet_dreams_note_on_an_evening_goodbye():

@@ -97,7 +97,7 @@ The model timeouts (`SANTA_TIMEOUT`, `SANTA_WARMUP_TIMEOUT`, `SANTA_WARMUP_RETRY
 | Setting | Default | What it does |
 |---|---|---|
 | `SANTA_LOCAL_DIR` | `local/` in the repository | Where your personal files live. Set it in the shell only; it cannot be set in `local/santa.env`. |
-| `SANTA_PROFILES` | `local/profiles.json` | The children's profiles file. A `profiles.json` in the repository folder is used until you move it, if the new one does not exist. |
+| `SANTA_PROFILES` | `local/profiles.json` | The children's profiles file. A `profiles.json` in the repository folder is used until you move it, if the new one does not exist. When set, the call log (`calls.json`) is kept next to this file, so each set of children has its own. |
 | `HF_HUB_OFFLINE` | `1` | Keeps the speech-model loader from contacting Hugging Face. The entry point sets it unless your shell or `local/santa.env` already does; `scripts/run-web.sh` sets it itself. Pocket TTS refuses to start unless it is `1`. |
 | `HF_HUB_DISABLE_TELEMETRY` | `1` | Turns off Hugging Face telemetry. Set by the entry point on the same terms. |
 | `PYTHONDONTWRITEBYTECODE` | `1` in `run-web.sh` | Set by `scripts/run-web.sh` so Python writes no bytecode files. |

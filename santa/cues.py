@@ -15,13 +15,20 @@ SAD_WORDS = re.compile(
     r"|sick|lost|gone|lonely|upset|mad|angry)\b", re.I)
 
 
+# "I've been good!" is the usual answer to Santa's "how are you?" (the guide's hello), so a plain "been good" needs a
+# list context ("this year", "for Santa"); asking ("have I been good?") or "naughty" about the child is enough. A bare
+# "naughty" about someone else ("my dog is naughty") is not.
+_YEAR = r"(?:this year|all year|this christmas|for (?:you|santa)|enough)"
 NICE_LIST_WORDS = re.compile(
-    r"\b(nice list|naughty|good list|bad list|(?:i'?ve|i have|have i) been (?:good|bad|nice)"
-    r"|(?:was|am) i (?:good|bad|nice)(?! at)|i'?m (?:good|bad|nice) this year)\b", re.I)
+    r"\b(?:nice list|naughty list|good list|bad list|naughty or nice|nice or naughty"
+    r"|(?:have|was|am) i (?:been )?(?:good|bad|nice|naughty)(?! at)"
+    r"|(?:i'?ve|i have|i'?m|i am|i was) (?:been )?(?:not |so |really |very )?naughty"
+    r"|(?:i'?ve|i have|i'?m|i am|i was) (?:been )?(?:so |really |very )?(?:good|nice|bad) " + _YEAR + r")\b", re.I)
 
 
 def talks_nice_list(text: str) -> bool:
-    """The child asks or talks about the nice or naughty list, or whether they have been good (santa/guide.py)."""
+    """The child asks or talks about the nice or naughty list, or whether they have been good (santa/guide.py).
+    Not "I've been good!" on its own: that is how children answer "how are you?"."""
     return NICE_LIST_WORDS.search(str(text).replace("’", "'")) is not None
 
 

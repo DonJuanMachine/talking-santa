@@ -215,7 +215,7 @@ class Santa:
                 note += persona.hello_note(speaker, again=self.call_log_on and bool(self.past_calls.get(speaker)))
             elif kind == guide.LIKES:
                 note += persona.likes_note(speaker, guide.pick_fact(self.profiles[speaker].get("facts", []),
-                                                                    len(self.past_calls.get(speaker, []))))
+                                                                    self._like_seed(speaker)))
         if self.gentle_on:
             key, sad = self._gift_key(speaker), cues.sounds_sad(text)
             if sad or self._gentle.get(self._child_key(key), 0) > 0:
@@ -240,6 +240,13 @@ class Santa:
         if kind == guide.LIKES and self.gifts is not None and self.gifts.due(speaker, text):
             return None
         return kind
+
+    def _like_seed(self, speaker: str) -> int:
+        """Which remembered like the likes question picks (guide.pick_fact). The number of earlier calls, so it changes
+        every call; but the call log keeps only the newest calllog.MAX_PER_CHILD, and chat.py (or SANTA_CALL_LOG=0) has
+        none, so then the date, which changes every day."""
+        n = len(self.past_calls.get(speaker, []))
+        return n if self.call_log_on and n < calllog.MAX_PER_CHILD else self.clock().toordinal()
 
     def _names(self, speaker: str | None) -> list[str]:
         """Names for the promise rule (P1-3: "I'll bring Emma a bike!"): the active child's name and registered
@@ -427,11 +434,11 @@ class Santa:
         self.log.append(f"{label}\nSanta: {answer}\n")
         if self.summary_on and speaker and speaker in self.profiles and safety.redact_private(text) == text:
             self.said.setdefault(speaker, []).append(text)
-        if self.call_log_on and speaker and speaker in self.profiles:
-            self._log_call_turn(speaker)
+        if self.call_log_on and spoken and speaker and speaker in self.profiles:
+            self._log_call_turn(speaker)     # only answered turns: a call where Santa only said FALLBACK never happened
 
     def _log_call_turn(self, speaker: str) -> None:
-        """Call log (call page only): count this registered child's turn; on their calllog.MIN_TURNS-th turn, log the
+        """Call log (call page only): count this registered child's answered turn; on their calllog.MIN_TURNS-th turn, log the
         call once, with the time of their first turn. Logged here, not at Hang up, so a dropped call still counts."""
         n = self._call_turns.get(speaker, 0) + 1
         self._call_turns[speaker] = n

@@ -4,7 +4,7 @@
          to hear from them again, and asks how they are (nothing else).
   LIKES  the next turn: Santa asks ONE question about something the child likes. If the child's profile has a remembered
          like or pet ("likes snow angels", "has a cat named Mittens"), he asks about that one, at most once per call;
-         which one rotates from call to call. Wishes ("wants a drawing pad") are never used: the gift question
+         which one rotates from call to call (from day to day without the call log). Wishes ("wants a drawing pad") are never used: the gift question
          (santa/gifts.py) covers those, and asking about a wish invites a promise.
 
 The nice-list note (persona.nice_note) is separate: any child, registered or not, who talks about the nice or naughty
@@ -53,8 +53,8 @@ def like_facts(facts) -> list[str]:
 
 
 def pick_fact(facts, seed: int) -> str | None:
-    """One like or pet to ask about, or None. `seed` (the number of earlier calls) rotates the pick from call to call,
-    so a child who calls every day is not asked about the same thing each time."""
+    """One like or pet to ask about, or None. `seed` (Santa._like_seed: the number of earlier calls, or the date) rotates
+    the pick, so a child who calls every day is not asked about the same thing each time."""
     likes = like_facts(facts)
     return likes[seed % len(likes)] if likes else None
 

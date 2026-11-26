@@ -64,6 +64,20 @@ def test_each_child_is_counted_on_their_own_turns():
     assert set(stored()) == {"Emma", "Leo"}
 
 
+def test_turns_santa_never_answered_do_not_count():
+    s = Santa(client=FakeClient(replies=(RuntimeError("runner down"), RuntimeError("runner down"),
+                                         "Hello there, my friend!")), profiles=copy.deepcopy(KIDS), call_log=True)
+    s.clock = lambda: NOW
+    say(s, "Emma")
+    say(s, "Emma")
+    assert s.last_reply.fallback and not config.CALLS_PATH.exists()   # two fallbacks: no call happened
+    s.clock = lambda: NOW + timedelta(minutes=2)
+    say(s, "Emma")
+    assert not config.CALLS_PATH.exists()                        # one answered turn is not a call yet
+    say(s, "Emma")
+    assert stored() == {"Emma": ["2026-11-25T18:32"]}            # the time of the first answered turn
+
+
 def test_guests_and_unregistered_names_are_never_logged():
     s = santa()
     for speaker in (None, None, "Zed", "Zed"):
@@ -144,6 +158,12 @@ def test_no_note_without_earlier_calls():
     (datetime(2026, 6, 1, 18, 0), NOW, "about 5 months ago"),
     (datetime(2025, 11, 1, 18, 0), NOW, "more than a year ago"),
     (datetime(2026, 11, 26, 18, 0), NOW, "recently"),            # the clock went back
+    # After midnight is still the night before: a call 22 hours ago is not "earlier today", and 1:30 AM on Tuesday
+    # was Monday night, not last night.
+    (datetime(2026, 11, 25, 1, 0), datetime(2026, 11, 25, 23, 0), "last night"),
+    (datetime(2026, 11, 24, 1, 30), datetime(2026, 11, 25, 19, 0), "2 days ago, on Monday night"),
+    (datetime(2026, 11, 24, 22, 0), datetime(2026, 11, 25, 1, 0), "earlier tonight"),
+    (datetime(2026, 11, 24, 18, 0), datetime(2026, 11, 25, 1, 0), "earlier today, in the evening"),
 ])
 def test_relative_times(last, now, want):
     assert persona._when(last, now) == want
@@ -185,6 +205,24 @@ def test_a_broken_file_is_kept_as_corrupt_and_a_new_log_starts(capsys):
     assert "unreadable" in capsys.readouterr().err
 
 
+def _corrupt_files():
+    return sorted(p.name for p in config.CALLS_PATH.parent.glob("calls.json.corrupt*"))
+
+
+def test_a_second_broken_file_never_overwrites_the_first_copy(capsys):
+    config.CALLS_PATH.write_text("{first broken")
+    calllog.load()
+    calllog.record("Emma", NOW)                                  # reads the same broken file again: no second copy
+    assert _corrupt_files() == ["calls.json.corrupt"]
+    config.CALLS_PATH.write_text("{second broken")
+    calllog.load()
+    calllog.load()
+    assert _corrupt_files() == ["calls.json.corrupt", "calls.json.corrupt.2"]
+    assert config.CALLS_PATH.with_name("calls.json.corrupt").read_text() == "{first broken"
+    assert config.CALLS_PATH.with_name("calls.json.corrupt.2").read_text() == "{second broken"
+    assert "kept as calls.json.corrupt.2" in capsys.readouterr().err
+
+
 def test_bad_hand_edited_entries_are_skipped():
     config.CALLS_PATH.write_text(json.dumps({"calls": {"Emma": ["yesterday", 5, "2026-11-20T10:00"], "Leo": "x"}}))
     assert calllog.load() == {"Emma": [datetime(2026, 11, 20, 10, 0)]}
@@ -203,7 +241,7 @@ def test_a_failed_save_does_not_stop_the_call(monkeypatch, capsys):
 
 def test_remove_deletes_the_log_and_its_copies():
     calllog.record("Emma", NOW)
-    for suffix in (".tmp", ".corrupt"):
+    for suffix in (".tmp", ".corrupt", ".corrupt.2", ".corrupt.3"):
         config.CALLS_PATH.with_name("calls.json" + suffix).write_text("x")
     calllog.remove()
     assert list(config.CALLS_PATH.parent.glob("calls.json*")) == []

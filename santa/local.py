@@ -107,3 +107,10 @@ def profiles_path() -> Path:
     """local/profiles.json; an older profiles.json in the repo root is still used until you move it."""
     new, old = LOCAL_DIR / "profiles.json", ROOT / "profiles.json"
     return old if (old.exists() and not new.exists()) else new
+
+
+def calls_path(profiles_env: str | None = None) -> Path:
+    """The call log: local/calls.json, or, when SANTA_PROFILES (`profiles_env`) picks another profiles file, calls.json
+    next to that file, so each set of children has its own call log (a child in one set never hears "you called
+    before" because of a same-named child in another)."""
+    return Path(profiles_env).parent / "calls.json" if profiles_env else LOCAL_DIR / "calls.json"
