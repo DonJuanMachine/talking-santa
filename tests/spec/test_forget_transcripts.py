@@ -103,3 +103,17 @@ def test_forget_with_no_transcript_folder_still_works(monkeypatch, capsys):
     chat.main()
     assert "memory wiped; 0 transcript files removed" in capsys.readouterr().out
     sys.modules.pop("chat", None)
+
+
+def test_forget_in_chat_also_removes_the_call_log(monkeypatch, capsys):
+    from datetime import datetime
+    from santa import calllog
+    calllog.record("Emma", datetime(2026, 11, 20, 18, 0))
+    config.CALLS_PATH.with_name("calls.json.corrupt").write_text("x")
+    chat = _chat()
+    monkeypatch.setattr(chat, "Santa", lambda: FakeSanta())
+    lines = iter(["/forget", "/quit"])
+    monkeypatch.setattr("builtins.input", lambda prompt="": next(lines))
+    chat.main()
+    assert list(config.CALLS_PATH.parent.glob("calls.json*")) == []
+    sys.modules.pop("chat", None)

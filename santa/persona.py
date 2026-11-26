@@ -247,6 +247,43 @@ def time_note(now) -> str:
     return TIME_NOTE.format(part=part, clock=clock, day=now.strftime("%A"), fit=_FIT[part])
 
 
+# Call log (santa/calllog.py, call page only): on the active child's turn, after the facts note, when that child called
+# before. Relative times, so Santa says "yesterday", never a date. Not something to announce every turn.
+CALLS_NOTE = ("\n(Santa's call log: you talked with {name} on the phone before, {count}. The last time was {when}. "
+              "You may mention it if it fits, like saying it is nice to hear from {name} again. Do not repeat it "
+              "every turn, and never say a date.)")
+
+
+def _when(last, now) -> str:
+    part = part_of_day(last.hour)
+    days = (now.date() - last.date()).days
+    if days < 0:
+        return "recently"
+    if days == 0:
+        return "earlier today" if part == part_of_day(now.hour) else ("last night" if part == "night"
+                                                                       else f"earlier today, in the {part}")
+    if days == 1:
+        return "last night" if part == "night" else f"yesterday {part}"
+    if days < 7:
+        return f"{days} days ago, on {last.strftime('%A')} {part}"
+    if days < 14:
+        return f"{days} days ago"
+    if days < 60:
+        return f"about {days // 7} weeks ago"
+    if days < 365:
+        return f"about {days // 30} months ago"
+    return "more than a year ago"
+
+
+def calls_note(name: str, past: list, now, cap: int = 50) -> str:
+    """`past`: datetimes of this child's earlier calls, oldest first (this call not included). "" if none."""
+    if not past:
+        return ""
+    n = len(past)
+    count = "once" if n == 1 else ("twice" if n == 2 else (f"{n} times" if n < cap else f"more than {cap - 1} times"))
+    return CALLS_NOTE.format(name=_one_line(name), count=count, when=_when(past[-1], now))
+
+
 def arc_note(template: str, name: str) -> str:
     """Format one arc note for `name` (the shared safety suffix included)."""
     n = _one_line(name)
