@@ -62,11 +62,12 @@ Every setting Santa reads, with its default. The defaults below are the values i
 | `SANTA_GIFT_ASK` | `1` (on) | The gift question. Off when `SANTA_ARC` is on. |
 | `SANTA_GIFT_ASK_TURN` | `5` | The child's turn number that first gets the gift question. |
 | `SANTA_GENTLE` | `1` (on) | Gentle mode after a sad or scared turn. |
+| `SANTA_GUIDE` | `1` (on) | Conversation guide: hello and "how are you" on a registered child's first turn (a welcome back if they called before), then one question about what they like; a yes with no conditions when any child asks about the nice list. Hello and likes are off when `SANTA_ARC` is on. |
 | `SANTA_SONGS` | `1` (on) | Santa says a carol's first verse when asked, from fixed text. |
 | `SANTA_HO_ONCE` | `1` (on) | "Ho ho ho" once when answering, then only for a child's song or joke. |
-| `SANTA_TIME_NOTE` | `1` (on) | Tell Santa this Mac's time on the first turn and on goodbyes. |
+| `SANTA_TIME_NOTE` | `1` (on) | Tell Santa this Mac's time on the first turn and on goodbyes. From 7 PM it also says "sweet dreams" is fine in a goodbye. |
 | `SANTA_CALL_SUMMARY` | `1` (on) | Save one `Last call:` line per child at Hang up. |
-| `SANTA_CALL_LOG` | `1` (on) | Keep when each registered child called in `local/calls.json` (call page only) and tell Santa on that child's turns. |
+| `SANTA_CALL_LOG` | `1` (on) | Keep when each registered child called in `local/calls.json` (call page only) and tell Santa on that child's first turn (every turn when `SANTA_GUIDE=0`). |
 
 ## Timing and failure
 

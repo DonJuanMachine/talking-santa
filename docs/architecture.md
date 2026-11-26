@@ -72,7 +72,7 @@ certificates and the voice files are read from disk when Santa starts; the optio
 | `brain.py` | history + memory + reply; `reply_stream`, `reply_ex`, `remember`, `warm_up`, `end_call` |
 | `persona.py` | system prompt (edit here to tune Santa); facts note and conversation-arc note wordings |
 | `arc.py` | conversation arc: per-child stage machine that picks a short note for the current turn (pure logic) |
-| `gifts.py`, `songs.py`, `cues.py` | gift question, song requests, small word checks on what the child just said |
+| `gifts.py`, `guide.py`, `songs.py`, `cues.py` | gift question, conversation guide (hello, likes, nice list), song requests, small word checks on what the child just said |
 | `spec.py` | the one place where reply rules live: pure functions, no I/O |
 | `speech.py` | remove-only, prefix-only streaming filter, sentence by sentence |
 | `safety.py` | thin wrapper over `spec.py` and `speech.py` for callers of the filter |
@@ -174,7 +174,9 @@ room for every call.
   call never sees its own entry. `chat.py` builds `Santa` without `call_log=True`, so it never reads or writes it.
 - **What the prompt receives:** every child's name and age in the system prompt, and the **active child's** last 8 facts,
   nicknames and family names on the current turn, plus (call page) how many times that child called before and when the
-  last call was, in relative words (`CALLS_NOTE` in `persona.py`).
+  last call was, in relative words (`CALLS_NOTE` in `persona.py`). With the conversation guide on (`guide.py`), the
+  call log goes on the child's first turn only, next to the hello note; then one likes note, which may name one of the
+  child's remembered likes or pets (never a wish). Both are one-shot notes on the current turn, like the gift question.
 - **Isolation** is therefore by prompt: another child's facts are not sent. It depends on the active speaker being right
   (section 5).
 - **Forget last** (`brain_adapter.py`) removes the facts the selected child's most recent turn added and saves twice so

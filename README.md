@@ -152,6 +152,16 @@ What Santa does, and how to change it (set values in `local/santa.env`; see [Cus
   Christmas-wish question. If the reply did not ask it, it is tried again on up to 2 more turns. Never while the child
   sounds sad (and for 2 turns after). `SANTA_GIFT_ASK=0` turns it off, `SANTA_GIFT_ASK_TURN` changes the turn. Off when
   `SANTA_ARC=1`. Guests share one slot. Code: `santa/gifts.py`.
+- **Conversation guide** (on by default): on a registered child's first turn of a call (usually "I'm Emma"), Santa is
+  told to say hello by name, to say he is so happy to hear from them again if they called before (call page), and to
+  ask how they are, nothing else. On the next turn he asks one question about something the child likes. If the
+  child's profile has a remembered like or pet ("likes snow angels", "has a cat named Mittens"), he asks about that,
+  one per call, a different one each call; wishes are never used, the gift question covers those. The likes question
+  waits while the child is sad and gives way to the gift question. Any child, registered or not, who asks about the
+  nice or naughty list is told yes, they are on the nice list, with no conditions ("if you are good"). Santa is also
+  told to ask mostly about what children like, never to ask about their dreams (unless the child brings dreams up; a
+  "dream gift" is fine), and to say "sweet dreams" only from 7 PM. `SANTA_GUIDE=0` turns the notes off; hello and likes
+  are off when `SANTA_ARC=1`. Code: `santa/guide.py`.
 - **Santa's backstory:** a fixed North Pole world (Mrs. Claus is Mary, the nine reindeer, four named elves) so he
   answers the same way every call. Replace it with your own in `local/santa_world.txt` (see `local.example/README.md`);
   the built-in text is `WORLD_DEFAULT` in `santa/persona.py`.
@@ -164,12 +174,13 @@ What Santa does, and how to change it (set values in `local/santa.env`; see [Cus
 - **Call log** (on by default): Santa keeps when each registered child called in `local/calls.json`: names, dates and
   times only, no words. A child is logged once per call, when their 2nd turn ends, with the time of their first turn,
   so a call that drops is logged too. Guests are never logged, and the typed chat (`chat.py`) never writes it. On that
-  child's turns Santa is told how many times they called before and when the last call was, in words like "yesterday
-  evening" or "3 days ago", so he can say it is nice to hear from them again. He is told not to bring it up every turn
-  and never to say a date. Each child keeps their latest 50 calls. `SANTA_CALL_LOG=0` turns it off (nothing is read or
+  child's first turn Santa is told how many times they called before and when the last call was, in words like
+  "yesterday evening" or "3 days ago", with the conversation guide's welcome back (on every turn, as a may-mention, when
+  `SANTA_GUIDE=0`). He is told never to say a date. Each child keeps their latest 50 calls. `SANTA_CALL_LOG=0` turns it off (nothing is read or
   written); delete `local/calls.json`, or a child's line in it, to forget.
 - **Time of day** (on by default): on the call's first turn and on goodbyes, Santa is told this Mac's time, so he says
-  good morning, not good night, at 9 AM. `SANTA_TIME_NOTE=0` turns it off.
+  good morning, not good night, at 9 AM. From 7 PM the note also says "sweet dreams" is fine in a goodbye; before
+  7 PM he is told not to say it. `SANTA_TIME_NOTE=0` turns it off.
 - **"Ho ho ho" once** (on by default): Santa laughs one big, slower "Ho, ho, ho!" when he answers the call. After that he
   says "Ho ho" only when the child sings or tells a joke. The prompt asks for this and the speech filter removes any
   other "Ho ho". `SANTA_HO_ONCE=0` turns it off. To change the laugh, edit `laugh`, `LAUGH_SPEED` and `LAUGH_PAUSE_S`

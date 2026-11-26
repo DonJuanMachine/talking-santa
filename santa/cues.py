@@ -15,6 +15,16 @@ SAD_WORDS = re.compile(
     r"|sick|lost|gone|lonely|upset|mad|angry)\b", re.I)
 
 
+NICE_LIST_WORDS = re.compile(
+    r"\b(nice list|naughty|good list|bad list|(?:i'?ve|i have|have i) been (?:good|bad|nice)"
+    r"|(?:was|am) i (?:good|bad|nice)(?! at)|i'?m (?:good|bad|nice) this year)\b", re.I)
+
+
+def talks_nice_list(text: str) -> bool:
+    """The child asks or talks about the nice or naughty list, or whether they have been good (santa/guide.py)."""
+    return NICE_LIST_WORDS.search(str(text).replace("’", "'")) is not None
+
+
 def sounds_sad(text: str) -> bool:
     """The child's words sound sad or scared (pauses the gift question; makes Santa gentle for a few turns)."""
     return SAD_WORDS.search(str(text).replace("’", "'")) is not None
