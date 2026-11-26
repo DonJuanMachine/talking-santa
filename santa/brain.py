@@ -19,7 +19,7 @@ from typing import Iterator
 
 from openai import DefaultHttpxClient, OpenAI, Timeout
 
-from . import arc, config, cues, gifts, memory, persona, safety, songs, spec, speech
+from . import arc, calllog, config, cues, gifts, memory, persona, safety, songs, spec, speech
 from .persona import build_system_prompt
 
 # A child's name: letters (accents ok), then letters/digits/'/-. e.g. Emma, Zoë, Mary-Kate
@@ -84,7 +84,8 @@ _SUMMARY_MAX_LINES = 8      # end_call: only a child's last few turns are shown 
 
 
 class Santa:
-    def __init__(self, model: str = config.MODEL, base_url: str = config.BASE_URL, client=None, profiles=None):
+    def __init__(self, model: str = config.MODEL, base_url: str = config.BASE_URL, client=None, profiles=None,
+                 call_log: bool = False):
         # trust_env=False: never route the model call through an HTTP proxy from the environment (I1).
         self.client = client if client is not None else OpenAI(
             base_url=base_url, api_key="not-needed", timeout=Timeout(config.REQUEST_TIMEOUT), max_retries=0,
@@ -117,6 +118,13 @@ class Santa:
         self.summary_on = os.getenv("SANTA_CALL_SUMMARY", "1").strip() != "0"
         self.said: dict[str, list[str]] = {}
         self._call_ended = False
+        # Call log (santa/calllog.py): only a real call (the call page passes call_log=True; chat.py never does).
+        # past_calls is read once, at the start of the call, so this call's own entry never shows in its notes.
+        self.call_log_on = call_log and calllog.enabled()
+        self.past_calls: dict[str, list[datetime]] = calllog.load() if self.call_log_on else {}
+        self._call_turns: dict[str, int] = {}
+        self._call_first_at: dict[str, datetime] = {}
+        self._call_logged: set[str] = set()
         # "Ho ho ho" once: Santa laughs when he answers; after that only when the child sings or tells a joke.
         # SANTA_HO_ONCE=0 lets the model say it whenever it likes (the old behaviour).
         self.ho_once = os.getenv("SANTA_HO_ONCE", "1").strip() != "0"
@@ -191,6 +199,9 @@ class Santa:
                 if self.time_note_on and (first or cues.sounds_like_goodbye(text)) else "")
         if speaker and speaker in self.profiles:
             note += persona.facts_note(speaker, self.profiles[speaker].get("facts", []), self.profiles[speaker])
+            if self.call_log_on:
+                note += persona.calls_note(speaker, self.past_calls.get(speaker, []), self.clock(),
+                                           calllog.MAX_PER_CHILD)
             if self.arc is not None:
                 note += self.arc.note(speaker)
         if self.gentle_on:
@@ -385,6 +396,19 @@ class Santa:
         self.log.append(f"{label}\nSanta: {answer}\n")
         if self.summary_on and speaker and speaker in self.profiles and safety.redact_private(text) == text:
             self.said.setdefault(speaker, []).append(text)
+        if self.call_log_on and speaker and speaker in self.profiles:
+            self._log_call_turn(speaker)
+
+    def _log_call_turn(self, speaker: str) -> None:
+        """Call log (call page only): count this registered child's turn; on their calllog.MIN_TURNS-th turn, log the
+        call once, with the time of their first turn. Logged here, not at Hang up, so a dropped call still counts."""
+        n = self._call_turns.get(speaker, 0) + 1
+        self._call_turns[speaker] = n
+        if n == 1:
+            self._call_first_at[speaker] = self.clock()
+        if n >= calllog.MIN_TURNS and speaker not in self._call_logged:
+            self._call_logged.add(speaker)
+            calllog.record(speaker, self._call_first_at[speaker])
 
     def _sing(self, speaker, text, label, start, key=None, offer_only=False) -> Iterator[str]:
         """The child asked for a song: Santa says a carol's first verse (fixed text, no model call). For a song he does

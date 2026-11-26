@@ -77,6 +77,7 @@ certificates and the voice files are read from disk when Santa starts; the optio
 | `speech.py` | remove-only, prefix-only streaming filter, sentence by sentence |
 | `safety.py` | thin wrapper over `spec.py` and `speech.py` for callers of the filter |
 | `memory.py` | per-child facts in `local/profiles.json` (text only) |
+| `calllog.py` | when each registered child called, in `local/calls.json` (call page only; names and times) |
 | `local.py` | finds your files in `local/` |
 | `config.py` | central config, overridable by environment variables |
 
@@ -167,8 +168,13 @@ room for every call.
 - **Last call:** at Hang up (and after a silence hang-up), one line per registered child who spoke at least twice, made
   by the model from the child's words and checked like any fact. It replaces the previous one. It is not made when the
   connection drops.
+- **Call log** (`calllog.py`, call page only): `local/calls.json` keeps, per registered child, the dates and times of
+  their latest 50 calls, nothing else. A child is logged once per call when their 2nd turn ends (in `_end_turn`, so a
+  dropped connection still counts), with the time of their first turn. The log is read once when a call starts, so a
+  call never sees its own entry. `chat.py` builds `Santa` without `call_log=True`, so it never reads or writes it.
 - **What the prompt receives:** every child's name and age in the system prompt, and the **active child's** last 8 facts,
-  nicknames and family names on the current turn.
+  nicknames and family names on the current turn, plus (call page) how many times that child called before and when the
+  last call was, in relative words (`CALLS_NOTE` in `persona.py`).
 - **Isolation** is therefore by prompt: another child's facts are not sent. It depends on the active speaker being right
   (section 5).
 - **Forget last** (`brain_adapter.py`) removes the facts the selected child's most recent turn added and saves twice so
@@ -297,7 +303,8 @@ fixed hold line. When the page reports the playback ended, the brain saves new f
   profile.
 
 ## 6. Data and privacy
-- Stored: per-child text facts in `local/profiles.json` (gitignored). Audio is not stored and the call page keeps no
+- Stored: per-child text facts in `local/profiles.json` and per-child call dates and times in `local/calls.json`
+  (both gitignored). Audio is not stored and the call page keeps no
   transcripts unless `--debug-audio` is on; the typed chat (`chat.py`) does save transcripts. The full table is in the
   README's [Data and privacy](../README.md#data-and-privacy).
 - Logs and `/status` hold numbers and reason codes; `/status` also lists the children's names, so in network mode it

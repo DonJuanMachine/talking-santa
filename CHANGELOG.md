@@ -6,6 +6,12 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
 
 ## [Unreleased]
 
+### Call log: Santa knows a child called before
+- The call page now keeps `local/calls.json`: for each registered child, the dates and times of their latest 50 calls. It holds no words. A child is logged once per call, when their 2nd turn ends, with the time of their first turn, so a call whose connection drops is logged too. Guests are never logged, and the typed chat (`chat.py`) neither reads nor writes it.
+- On a registered child's turns, Santa gets a short note saying how many times that child called before and when the last call was ("yesterday evening", "3 days ago, on Sunday evening"). He is told he may mention it if it fits, not every turn, and never to say a date. Only the active child's calls are sent; the note is never stored in history.
+- The file is written atomically with owner-only permissions; an unreadable one is kept as `calls.json.corrupt` and a new log starts. `/forget` in `chat.py` deletes it. `SANTA_CALL_LOG=0` turns the feature off.
+- Changed: `santa/calllog.py` (new), `santa/brain.py`, `santa/persona.py`, `santa/config.py`, `santa/web/brain_adapter.py`, `chat.py`, README, `docs/configuration.md`, `docs/architecture.md`, `local.example/santa.env.example`. Tests: `tests/spec/test_call_log.py`, `tests/spec/test_forget_transcripts.py`; `tests/conftest.py` gives each test its own empty call log.
+
 ### Default voice: Pocket TTS `stuart_bell`
 - Santa now speaks with Kyutai Pocket TTS, built-in voice `stuart_bell`, by default, instead of Kokoro `am_michael`. Kokoro is still available with `SANTA_TTS=kokoro` (default voice `am_michael` at 0.9, blends as before). Chosen by ear from the J1 audition. Pocket has no speed setting and samples each line fresh, so repeated lines differ a little.
 - The one-time install sets up Pocket TTS: `pip install -e ".[web,dev]"` now installs `pocket-tts==4.0.1` (and torch), and step 2 runs `tools/probes/j1_audition.py pocket-fetch` once. The two Kokoro files are no longer downloaded by the install; the README's new Kokoro section has them. The old "Pocket TTS (optional)" section is gone.

@@ -66,6 +66,7 @@ Every setting Santa reads, with its default. The defaults below are the values i
 | `SANTA_HO_ONCE` | `1` (on) | "Ho ho ho" once when answering, then only for a child's song or joke. |
 | `SANTA_TIME_NOTE` | `1` (on) | Tell Santa this Mac's time on the first turn and on goodbyes. |
 | `SANTA_CALL_SUMMARY` | `1` (on) | Save one `Last call:` line per child at Hang up. |
+| `SANTA_CALL_LOG` | `1` (on) | Keep when each registered child called in `local/calls.json` (call page only) and tell Santa on that child's turns. |
 
 ## Timing and failure
 

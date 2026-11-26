@@ -101,7 +101,7 @@ class SantaBrain:
         self.lock = threading.Lock()
 
     def _fresh(self) -> Santa:
-        return Santa(model=self.model, client=self.client, profiles=self.profiles)
+        return Santa(model=self.model, client=self.client, profiles=self.profiles, call_log=True)   # a real call
 
     # -- read-only views ------------------------------------------------------------
     def names(self) -> list[str]:

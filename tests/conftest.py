@@ -26,3 +26,11 @@ def _isolated_local_and_profiles():
     assert tmp in prof.parents, "profiles path is not under the temp dir"
     assert loc != (local.ROOT / "local").resolve() and tmp in loc.parents, "tests would touch the real local/ folder"
     yield
+
+
+@pytest.fixture(autouse=True)
+def _fresh_call_log(tmp_path, monkeypatch):
+    """Each test gets its own empty local/calls.json path: a call-page test that logs a call must not change the
+    notes (and the prompt snapshots) of the tests after it."""
+    from santa import config
+    monkeypatch.setattr(config, "CALLS_PATH", tmp_path / "calls.json")

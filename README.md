@@ -161,6 +161,13 @@ What Santa does, and how to change it (set values in `local/santa.env`; see [Cus
   local model), passes the same privacy checks as other saved facts, and each new one replaces the old one. No
   transcript is stored. It is not made if the connection simply drops. `SANTA_CALL_SUMMARY=0` turns it off; delete the
   line from `local/profiles.json` to forget it.
+- **Call log** (on by default): Santa keeps when each registered child called in `local/calls.json`: names, dates and
+  times only, no words. A child is logged once per call, when their 2nd turn ends, with the time of their first turn,
+  so a call that drops is logged too. Guests are never logged, and the typed chat (`chat.py`) never writes it. On that
+  child's turns Santa is told how many times they called before and when the last call was, in words like "yesterday
+  evening" or "3 days ago", so he can say it is nice to hear from them again. He is told not to bring it up every turn
+  and never to say a date. Each child keeps their latest 50 calls. `SANTA_CALL_LOG=0` turns it off (nothing is read or
+  written); delete `local/calls.json`, or a child's line in it, to forget.
 - **Time of day** (on by default): on the call's first turn and on goodbyes, Santa is told this Mac's time, so he says
   good morning, not good night, at 9 AM. `SANTA_TIME_NOTE=0` turns it off.
 - **"Ho ho ho" once** (on by default): Santa laughs one big, slower "Ho, ho, ho!" when he answers the call. After that he
@@ -328,7 +335,7 @@ but Santa ignores them. The example below uses made-up children and a made-up pl
 ```
 /add Emma   register a child (Santa only remembers registered children)
 /who        show remembered facts
-/forget     wipe all memory, the backups and the saved transcripts
+/forget     wipe all memory, the backups, the call log and the saved transcripts
 /quit
 ```
 
@@ -342,8 +349,10 @@ What is written to disk, where and when:
 | Situation | Written | Where | Contains |
 |---|---|---|---|
 | Call page (default) | `profiles.json`, rewritten after each turn of a registered child, on Forget last and at Hang up; `profiles.json.bak` (the previous good file); `profiles.json.tmp` while writing. Guests are never saved. | `local/` | Names, ages, nicknames, family names, short fact sentences, the `Last call:` line |
+| Call page (default) | `calls.json`, when a registered child's 2nd turn of a call ends; `calls.json.tmp` while writing. Guests are never saved. `SANTA_CALL_LOG=0` turns it off. | `local/` | Each registered child's name and the date and time of their latest 50 calls |
+| A `calls.json` that cannot be read | `calls.json.corrupt`, a copy of the broken file, before a new log is started | `local/` | Whatever was in it |
 | Call page, first start for a voice setting | Canned-line audio (`*.npy`) | `santa/web/.cache/` (gitignored) | Santa's fixed lines only |
-| Call page (default) | No audio, no transcripts, no log file | - | - |
+| Call page (default) | No audio, no transcripts | - | - |
 | Started with `scripts/start-santa.sh` | `santa.log` (private to you), `server.pid` | `local/run/` | Warnings, start-up lines, model errors, alert reasons, and why a call's connection ended (state names and numbers) |
 | `--debug-audio` | One `.wav` per child utterance, before recognition | `santa/web/debug_audio/` (gitignored) | **The children's voices** |
 | `--metrics-file PATH` | One line of numbers per turn | `PATH` | Timings, counters, reason codes; no text |
@@ -356,11 +365,13 @@ Logs hold timings, counters and reason codes, not speech. `/status` also lists t
 on this Mac.
 
 **See it, delete it:**
-1. *See what Santa remembers:* open `local/profiles.json` (or run `python chat.py` and type `/who`).
+1. *See what Santa remembers:* open `local/profiles.json` (or run `python chat.py` and type `/who`), and
+   `local/calls.json` for when each child called.
 2. *Delete some of it:* press **Forget last** on the call page for the last turn's facts. For anything else (older
    facts, the *Last call* line) stop Santa, edit `local/profiles.json`, and delete `profiles.json.bak` and
-   `profiles.json.corrupt` if present, since they hold earlier copies.
-3. *Delete everything:* type `/forget` in `chat.py` (profiles, backups and transcripts), or delete the files in
+   `profiles.json.corrupt` if present, since they hold earlier copies. Edit or delete `local/calls.json` the same way
+   (Forget last does not touch it).
+3. *Delete everything:* type `/forget` in `chat.py` (profiles, backups, the call log and transcripts), or delete the files in
    `local/` yourself, plus `santa/web/debug_audio/` if you ever used `--debug-audio`.
 
 ## Failure behavior
@@ -483,7 +494,8 @@ also run JavaScript tests when Node.js is installed.
 Layout:
 - `santa/` - the core: `brain.py` (history + memory + reply, reused by the voice page), `persona.py` (system prompt),
   `spec.py` (every reply rule), `speech.py` (remove-only streaming filter), `safety.py` (wrapper for callers of the
-  filter), `memory.py` (per-child facts in `local/profiles.json`), `local.py` (finds your files in `local/`),
+  filter), `memory.py` (per-child facts in `local/profiles.json`), `calllog.py` (when each child called, in
+  `local/calls.json`), `local.py` (finds your files in `local/`),
   `config.py` (model and memory settings, read from the environment), plus `arc.py`, `cues.py`, `gifts.py`, `songs.py`
   - `santa/web/` - the call page: voice activity detection and end of speech, Whisper speech recognition, Pocket TTS
     (or Kokoro) voice, call state machine (uses the brain unchanged); the page itself is in `santa/web/static/`
