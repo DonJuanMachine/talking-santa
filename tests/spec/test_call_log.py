@@ -116,6 +116,24 @@ def test_the_call_page_brain_logs_calls():
     assert list(stored()) == ["Emma"]
 
 
+def test_a_reply_cut_off_by_hang_up_does_not_count():
+    """Review 2026-11-25: the call page drains a cancelled reply, and that turn counted as answered, so a call where the
+    child heard one reply was logged ("so happy to hear from you again" next time)."""
+    import threading
+
+    from santa.web.brain_adapter import SantaBrain
+    b = SantaBrain(client=FakeClient(replies=("Hello there, my friend! How are you?",)), profiles=copy.deepcopy(KIDS))
+    b.new_call()
+    b.reply("Emma", "hi Santa", lambda sentence: None)
+    hang_up = threading.Event()
+    info = b.reply("Emma", "I made a snowman", lambda sentence: hang_up.set(), cancel=hang_up)
+    assert info.cancelled
+    assert not config.CALLS_PATH.exists()
+    assert not b.santa.cancelled()                               # reset for the next turn
+    b.reply("Emma", "hi again", lambda sentence: None)
+    assert list(stored()) == ["Emma"]                            # a turn that was heard still counts
+
+
 # -- what Santa is told -------------------------------------------------------------------------------------------
 def test_the_note_is_on_the_active_childs_turn_only_and_never_in_history():
     calllog.record("Emma", NOW - timedelta(days=3))
@@ -163,7 +181,10 @@ def test_no_note_without_earlier_calls():
     (datetime(2026, 11, 25, 1, 0), datetime(2026, 11, 25, 23, 0), "last night"),
     (datetime(2026, 11, 24, 1, 30), datetime(2026, 11, 25, 19, 0), "2 days ago, on Monday night"),
     (datetime(2026, 11, 24, 22, 0), datetime(2026, 11, 25, 1, 0), "earlier tonight"),
-    (datetime(2026, 11, 24, 18, 0), datetime(2026, 11, 25, 1, 0), "earlier today, in the evening"),
+    # ...but after midnight it is no longer "today" for a call before midnight (review 2026-11-25)
+    (datetime(2026, 11, 24, 18, 0), datetime(2026, 11, 25, 1, 0), "this evening"),
+    (datetime(2026, 11, 24, 6, 0), datetime(2026, 11, 25, 1, 0), "this morning"),
+    (datetime(2026, 11, 25, 0, 30), datetime(2026, 11, 25, 6, 0), "last night"),
 ])
 def test_relative_times(last, now, want):
     assert persona._when(last, now) == want
@@ -205,6 +226,34 @@ def test_a_broken_file_is_kept_as_corrupt_and_a_new_log_starts(capsys):
     assert "unreadable" in capsys.readouterr().err
 
 
+def test_a_log_that_cannot_be_read_is_never_overwritten(monkeypatch, capsys):
+    """Review 2026-11-25: an OSError on read (permissions, a disk error) used to start a new log, and record() then
+    replaced the whole history with one entry."""
+    calllog.record("Emma", NOW - timedelta(days=1))
+    before = config.CALLS_PATH.read_text()
+
+    def unreadable(path):
+        raise PermissionError("Permission denied")
+    monkeypatch.setattr(calllog, "_read", unreadable)
+    assert calllog.load() == {}                                  # the call goes on without the log
+    assert not calllog.record("Emma", NOW)
+    assert config.CALLS_PATH.read_text() == before
+    assert _corrupt_files() == []
+    err = capsys.readouterr().err
+    assert "could not read the call log" in err and "could not save the call log" in err
+
+
+def test_a_broken_log_that_cannot_be_kept_is_never_overwritten(monkeypatch):
+    config.CALLS_PATH.write_text("{not json")
+
+    def no_room(path):
+        raise OSError("disk full")
+    monkeypatch.setattr(calllog, "_keep_corrupt", no_room)
+    assert calllog.load() == {}
+    assert not calllog.record("Emma", NOW)
+    assert config.CALLS_PATH.read_text() == "{not json"
+
+
 def _corrupt_files():
     return sorted(p.name for p in config.CALLS_PATH.parent.glob("calls.json.corrupt*"))
 
@@ -226,6 +275,14 @@ def test_a_second_broken_file_never_overwrites_the_first_copy(capsys):
 def test_bad_hand_edited_entries_are_skipped():
     config.CALLS_PATH.write_text(json.dumps({"calls": {"Emma": ["yesterday", 5, "2026-11-20T10:00"], "Leo": "x"}}))
     assert calllog.load() == {"Emma": [datetime(2026, 11, 20, 10, 0)]}
+
+
+def test_hand_edited_times_in_other_iso_forms_are_kept_when_the_log_is_rewritten():
+    """Review 2026-11-25: only "%Y-%m-%dT%H:%M" was read, so a hand edit with seconds or a space vanished on the next
+    record()."""
+    config.CALLS_PATH.write_text(json.dumps({"calls": {"Emma": ["2026-11-20T10:00:59", "2026-11-21 18:05"]}}))
+    calllog.record("Emma", NOW)
+    assert stored() == {"Emma": ["2026-11-20T10:00", "2026-11-21T18:05", "2026-11-25T18:30"]}
 
 
 def test_a_failed_save_does_not_stop_the_call(monkeypatch, capsys):

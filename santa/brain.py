@@ -15,7 +15,7 @@ import re
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Iterator
+from typing import Callable, Iterator
 
 from openai import DefaultHttpxClient, OpenAI, Timeout
 
@@ -112,6 +112,9 @@ class Santa:
         self.guide: guide.Guide | None = guide.Guide() if guide.turns_enabled() else None
         self.nice_on = guide.enabled()
         self._turn_guide: str | None = None   # the guide note the current turn carried (None on a song turn)
+        # The call page sets this for each turn: True once Hang up cut the reply off, so the child did not hear it all.
+        # Such a turn does not use up the hello or likes note and does not count toward the call log.
+        self.cancelled: Callable[[], bool] = lambda: False
         # Time of day on every turn, from this Mac's clock (SANTA_TIME_NOTE=0 turns it off). Tests replace clock.
         self.time_note_on = os.getenv("SANTA_TIME_NOTE", "1").strip() != "0"
         self.clock = datetime.now
@@ -214,15 +217,14 @@ class Santa:
             if kind == guide.HELLO:
                 note += persona.hello_note(speaker, again=self.call_log_on and bool(self.past_calls.get(speaker)))
             elif kind == guide.LIKES:
-                note += persona.likes_note(speaker, guide.pick_fact(self.profiles[speaker].get("facts", []),
-                                                                    self._like_seed(speaker)))
+                note += persona.likes_note(speaker, self._like_fact(speaker))
         elif kind == guide.HELLO:   # a guest
             note += persona.guest_hello_note()
         if self.gentle_on:
             key, sad = self._gift_key(speaker), cues.sounds_sad(text)
             if sad or self._gentle.get(self._child_key(key), 0) > 0:
                 note += persona.gentle_note(key or gifts.GUEST, sad)
-        if self.gifts is not None:
+        if self.gifts is not None and kind != guide.HELLO:   # the hello says "ask nothing else": the gift question waits
             note += self.gifts.note(self._gift_key(speaker), text)
         if self.nice_on and cues.talks_nice_list(text):
             note += persona.nice_note(self._gift_key(speaker) or gifts.GUEST)
@@ -245,6 +247,11 @@ class Santa:
         if kind == guide.LIKES and self.gifts is not None and self.gifts.due(speaker, text):
             return None
         return kind
+
+    def _like_fact(self, speaker: str) -> str | None:
+        """The remembered like or pet the likes question asks about (None: a general likes question)."""
+        p = self.profiles.get(speaker)
+        return guide.pick_fact(p.get("facts", []) if isinstance(p, dict) else [], self._like_seed(speaker))
 
     def _like_seed(self, speaker: str) -> int:
         """Which remembered like the likes question picks (guide.pick_fact). The number of earlier calls, so it changes
@@ -429,9 +436,11 @@ class Santa:
         if self.arc is not None and spoken and speaker and speaker in self.profiles:
             self.arc.advance(speaker, content)   # only what was actually spoken (never on FALLBACK)
         if self.gifts is not None and spoken:
-            self.gifts.advance(self._gift_key(speaker), text, content)
-        if self.guide is not None and spoken:
-            self.guide.advance(self._gift_key(speaker), content, self._turn_guide)   # guests share one slot (None)
+            self.gifts.advance(self._gift_key(speaker), text, content, held=self._turn_guide == guide.HELLO)
+        heard = bool(spoken) and not self.cancelled()   # Hang up cut the reply off: the child did not hear it
+        if self.guide is not None and heard:
+            fact =self._like_fact(speaker) if self._turn_guide == guide.LIKES else None
+            self.guide.advance(self._gift_key(speaker), content, self._turn_guide, fact)   # guests: one slot (None)
         self._turn_guide = None
         if self.gentle_on and spoken:
             k = self._child_key(self._gift_key(speaker))
@@ -439,7 +448,7 @@ class Santa:
         self.log.append(f"{label}\nSanta: {answer}\n")
         if self.summary_on and speaker and speaker in self.profiles and safety.redact_private(text) == text:
             self.said.setdefault(speaker, []).append(text)
-        if self.call_log_on and spoken and speaker and speaker in self.profiles:
+        if self.call_log_on and heard and speaker and speaker in self.profiles:
             self._log_call_turn(speaker)     # only answered turns: a call where Santa only said FALLBACK never happened
 
     def _log_call_turn(self, speaker: str) -> None:

@@ -301,6 +301,8 @@ def _when(last, now) -> str:
     if days == 0:
         if part == part_of_day(now.hour):
             return "earlier tonight" if part == "night" else "earlier today"
+        if now.date() != last.date():   # after midnight, a call before it: not "today" (review 2026-11-25)
+            return f"this {part}"
         return f"earlier today, in the {part}"
     if days == 1:
         return "last night" if part == "night" else f"yesterday {part}"

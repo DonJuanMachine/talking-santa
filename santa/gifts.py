@@ -83,9 +83,10 @@ class Gifts:
     def note(self, name: str | None, child_text: str = "") -> str:
         return persona.gift_note(name or GUEST) if self.due(name, child_text) else ""
 
-    def advance(self, name: str | None, child_text: str, spoken: str) -> bool:
-        """Record one spoken turn. Returns whether that turn carried the note."""
-        had = self.due(name, child_text)
+    def advance(self, name: str | None, child_text: str, spoken: str, held: bool = False) -> bool:
+        """Record one spoken turn. Returns whether that turn carried the note. `held`: the note was due but not sent
+        (the guide's hello turn), so it is not counted as a try."""
+        had = self.due(name, child_text) and not held
         st = self.kids.setdefault(self._key(name), ChildGifts())
         st.turns += 1
         st.tries += had

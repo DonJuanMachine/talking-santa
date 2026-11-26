@@ -32,6 +32,17 @@ def _path(path) -> Path:
     return Path(path) if path is not None else Path(config.CALLS_PATH)
 
 
+def _minute(t) -> str:
+    """One stored time in FMT. Any ISO form a person might type by hand is accepted ("2026-11-22T18:05:00",
+    "2026-11-22 18:05"), so a hand edit is not dropped when the log is next rewritten; with a time zone, local time."""
+    if not isinstance(t, str):
+        raise TypeError("not a string")
+    d = datetime.fromisoformat(t.strip())
+    if d.tzinfo is not None:
+        d = d.astimezone().replace(tzinfo=None)
+    return d.strftime(FMT)
+
+
 def _read(path: Path) -> dict[str, list[str]]:
     data = json.loads(path.read_text())
     calls = data.get("calls") if isinstance(data, dict) else None
@@ -42,7 +53,7 @@ def _read(path: Path) -> dict[str, list[str]]:
         good = []
         for t in times if isinstance(times, list) else []:
             try:
-                good.append(datetime.strptime(t, FMT).strftime(FMT))
+                good.append(_minute(t))
             except (TypeError, ValueError):
                 continue                                  # a hand-edited bad entry is skipped, not fatal
         if good:
@@ -79,15 +90,13 @@ def _keep_corrupt(path: Path) -> Path | None:
 def _load_raw(path: Path) -> dict[str, list[str]]:
     if not path.exists():
         return {}
+    # An OSError (the file cannot be read: permissions, a disk error) is raised, not treated as an empty log: load()
+    # then has no calls for this call, and record() writes nothing, so a log that may be fine is never replaced.
     try:
         return _read(path)
-    except (ValueError, OSError) as e:
-        try:
-            kept = _keep_corrupt(path)
-        except OSError:
-            kept = None
-        _warn(f"{path.name} is unreadable ({e}); starting a new call log."
-              + (f" The broken file is kept as {kept.name}." if kept else ""))
+    except ValueError as e:                               # broken content (not JSON, not UTF-8, no "calls")
+        kept = _keep_corrupt(path)                        # OSError raised: a broken log is never replaced unkept
+        _warn(f"{path.name} is unreadable ({e}); starting a new call log. The broken file is kept as {kept.name}.")
         return {}
 
 
