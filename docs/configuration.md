@@ -29,6 +29,7 @@ Every setting Santa reads, with its default. The defaults below are the values i
 | `SANTA_PORT` | `8765` | The call page's port. `--port` overrides it. `scripts/start-santa.sh` requires a number from 1 to 65535. |
 | `SANTA_PYTHON` | `~/.venvs/talking-santa-h/bin/python` | Scripts only: the Python interpreter that `run-web.sh` and `start-santa.sh` use. |
 | `SANTA_OPEN` | `1` | `scripts/start-santa.sh` only: `0` starts Santa without opening the browser. |
+| `SANTA_DOCKER_CHECK_S` | `15` | `start-santa.sh` and `stop-santa.sh` only: seconds to wait for one `docker info` before treating Docker's engine as not responding. A healthy engine answers in about a second. |
 
 ## Voice
 
