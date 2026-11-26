@@ -75,8 +75,8 @@ class Settings:
 
     # TTS
     models_dir: Path = Path(os.getenv("SANTA_MODELS_DIR", str(Path.home() / ".cache" / "talking-santa" / "models")))
-    tts_engine: str = os.getenv("SANTA_TTS", "kokoro")            # "kokoro" or "pocket" (Kyutai Pocket TTS)
-    voice: str = os.getenv("SANTA_VOICE", "peter_yearsley" if os.getenv("SANTA_TTS") == "pocket" else "am_michael")
+    tts_engine: str = os.getenv("SANTA_TTS", "pocket")            # "pocket" (Kyutai Pocket TTS) or "kokoro"
+    voice: str = os.getenv("SANTA_VOICE", "am_michael" if os.getenv("SANTA_TTS") == "kokoro" else "stuart_bell")
     speed: float = _f("SANTA_SPEED", 0.9)                          # Kokoro only
 
     # call flow (sections 2, 4.9, 4.10)

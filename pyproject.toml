@@ -25,7 +25,8 @@ web = [
     "psutil",
     "soundfile",
     "mlx-whisper; sys_platform == 'darwin' and platform_machine == 'arm64'",
-    "kokoro-onnx",
+    "pocket-tts==4.0.1",     # the default voice (Kyutai Pocket TTS); also installs torch
+    "kokoro-onnx",           # the alternative voice (SANTA_TTS=kokoro)
 ]
 dev = [
     "pytest",

@@ -27,7 +27,7 @@ flowchart LR
     STT["Speech recognition (mlx-whisper)"]
     PROMPT["Santa brain: persona, memory, history"]
     FILTER["Safety filter (spec.py, speech.py)"]
-    TTS["Voice (Kokoro)"]
+    TTS["Voice (Pocket TTS)"]
   end
   MODEL["Model server: Docker Model Runner at localhost:12434"]
   PROF[("local/profiles.json and .bak")]
@@ -185,7 +185,7 @@ room for every call.
 | `audio.py`, `vad.py`, `endpoint.py` | frames, Silero VAD, end-of-speech logic |
 | `stt.py` | mlx-whisper; "say that again" rules from confidence |
 | `safe.py` | the only door to the voice |
-| `tts.py`, `canned.py` | Kokoro (or Pocket TTS); cached canned lines |
+| `tts.py`, `canned.py` | Pocket TTS (or Kokoro); cached canned lines |
 | `brain_adapter.py` | wraps the brain; one brain thread; cancellable stream |
 | `session.py` | call state machine, mic gating, per-turn metrics |
 | `access.py`, `alerts.py` | Host/PIN/rate-limit checks; the macOS security alert |
@@ -317,16 +317,16 @@ fixed hold line. When the page reports the playback ended, the brain saves new f
 
 ## 7. Models
 
-The four default models and the optional Pocket TTS voice are open-weight models that run on this Mac. Each
+The four default models and the optional Kokoro voice are open-weight models that run on this Mac. Each
 model's own page has its terms.
 
 | Role | Model | Developer | Source |
 |---|---|---|---|
 | Language model | Gemma 4 e4b, served by Docker Model Runner (the file comes from Docker's `ai/gemma4`) | Google DeepMind | [Google's model card](https://ai.google.dev/gemma/docs/core/model_card_4) |
 | Speech recognition | Whisper small.en via mlx-whisper (the `mlx-community/whisper-small.en-mlx` conversion) | OpenAI | [openai/whisper](https://github.com/openai/whisper), [conversion](https://huggingface.co/mlx-community/whisper-small.en-mlx) |
-| Voice | Kokoro-82M v1.0 via kokoro-onnx | hexgrad | [hexgrad/Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) |
+| Voice | Pocket TTS 4.0.1, built-in voice `stuart_bell` (the `kyutai/pocket-tts-without-voice-cloning` weights) | Kyutai | [kyutai-labs/pocket-tts](https://github.com/kyutai-labs/pocket-tts), [weights](https://huggingface.co/kyutai/pocket-tts-without-voice-cloning) |
 | Voice activity | Silero VAD v5 | Silero team | [snakers4/silero-vad](https://github.com/snakers4/silero-vad) |
-| Voice, optional instead of Kokoro (`SANTA_TTS=pocket`; see [Pocket TTS](../README.md#pocket-tts-optional)) | Pocket TTS | Kyutai | [kyutai-labs/pocket-tts](https://github.com/kyutai-labs/pocket-tts) |
+| Voice, optional instead of Pocket TTS (`SANTA_TTS=kokoro`; see [Kokoro](../README.md#kokoro-optional)) | Kokoro-82M v1.0 via kokoro-onnx | hexgrad | [hexgrad/Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) |
 
 License: see each model's page. For Gemma 4, Google's model card lists Apache 2.0. Why Gemma 4 e4b and how the
 candidates were compared: [model-selection.md](model-selection.md).
@@ -351,13 +351,14 @@ Every setting, with its default and effect, is in [configuration.md](configurati
 - One large model at a time; run `docker model unload --all` before switching models.
 - **Startup checklist** (what `scripts/start-santa.sh` checks, in order): the Python environment, the settings in
   `local/santa.env`, Docker Desktop, Model Runner answering at the model URL, the model downloaded, no other model loaded
-  in memory, the voice setting (and the Pocket TTS files when `SANTA_TTS=pocket`), with `--network` the PIN and
+  in memory, the voice setting (and the Pocket TTS files unless `SANTA_TTS=kokoro`), with `--network` the PIN and
   certificates, and that the port is free. For anything off it asks and fixes it. It does not check the Kokoro, Silero
-  VAD or Whisper files. Kokoro and Whisper load when the server starts, so a missing one stops it and the script prints
-  the end of the log; the Silero VAD model loads when a page connects (`server.py`, per WebSocket), so a missing file
-  passes the start script and the page cannot connect.
-- **Offline checklist:** the Kokoro model and voices, the Silero VAD file and the Whisper snapshot are on disk (see the
-  README's one-time install), the language model is pulled, and Santa is started with a script or with
+  VAD or Whisper files. The voice and Whisper load when the server starts, so a missing one stops it and the script
+  prints the end of the log; the Silero VAD model loads when a page connects (`server.py`, per WebSocket), so a missing
+  file passes the start script and the page cannot connect.
+- **Offline checklist:** the Pocket TTS files (or, with `SANTA_TTS=kokoro`, the Kokoro model and voices), the Silero
+  VAD file and the Whisper snapshot are on disk (see the README's one-time install), the language model is pulled, and
+  Santa is started with a script or with
   `python -m santa.web` so the speech-model loader stays offline.
 
 ## 11. Known limitations
@@ -377,4 +378,6 @@ Every setting, with its default and effect, is in [configuration.md](configurati
 - **Memory after the reply.** Fact extraction is a second model call that runs after Santa has spoken, so it never
   delays an answer.
 - **A web page instead of a USB handset.** The call is a page on the Mac (`CHANGELOG.md`).
-- **Kokoro by default, Pocket TTS optional.** Both run locally; `SANTA_TTS` chooses.
+- **Pocket TTS (`stuart_bell`) by default, Kokoro optional.** Both run locally; `SANTA_TTS` chooses. Kokoro was the
+  first default (H1); Pocket replaced it after the J1 audition, chosen by ear. Pocket also starts speaking sooner (J1
+  bench) and uses about 0.3 GB more memory.

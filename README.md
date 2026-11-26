@@ -50,7 +50,7 @@ Known limits are listed under [Known limits](#known-limits).
 
 - An Apple silicon Mac (the voice app uses Apple's MLX for speech recognition) with 16 GB of memory or more. The
   language model's server used about 10 GB during a benchmark run on the tested Mac (see
-  [docs/model-selection.md](docs/model-selection.md)), and speech recognition and the voice use under 1 GB more. A
+  [docs/model-selection.md](docs/model-selection.md)), and speech recognition and the voice use under 2 GB more. A
   16 GB Mac has not been tested: close other large apps during a call. Replies may come more slowly on older chips than
   on the tested Mac.
 - Python 3.12. The install below runs `python3.12`; if `python3.12 --version` says "command not found", install it
@@ -70,12 +70,11 @@ Run these from the repository folder, in this order.
 ```bash
 # 1. The Python environment
 python3.12 -m venv ~/.venvs/talking-santa-h
-~/.venvs/talking-santa-h/bin/pip install -e ".[web,dev]"   # fastapi, uvicorn, onnxruntime, mlx-whisper, kokoro-onnx, test tools
+~/.venvs/talking-santa-h/bin/pip install -e ".[web,dev]"   # fastapi, uvicorn, mlx-whisper, pocket-tts (and torch), kokoro-onnx, test tools
 
 # 2. The voice, voice-activity and speech-recognition files (they are loaded from disk afterwards)
+~/.venvs/talking-santa-h/bin/python tools/probes/j1_audition.py pocket-fetch   # Pocket TTS model and built-in voices
 M=~/.cache/talking-santa/models; mkdir -p $M
-curl -L -o $M/kokoro-v1.0.onnx https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx
-curl -L -o $M/voices-v1.0.bin  https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin
 curl -L -o $M/silero_vad.onnx  https://github.com/snakers4/silero-vad/raw/master/src/silero_vad/data/silero_vad.onnx
 ~/.venvs/talking-santa-h/bin/python -c "from huggingface_hub import snapshot_download as s; s('mlx-community/whisper-small.en-mlx')"
 
@@ -102,10 +101,11 @@ scripts/stop-santa.sh               # stops Santa, frees the model's memory
 ```
 
 `start-santa.sh` checks Docker, Model Runner, the model, that no other model is using the memory, the voice setting
-(and the Pocket TTS files, if you chose Pocket TTS) and, with `--network`, the PIN and certificates. For anything that
-is off it asks "y/N" and fixes it, then starts Santa in the background and opens the page. It does not check the voice,
-voice-activity and speech-recognition files from step 2 of the install. A missing voice or speech-recognition file
-stops Santa at start, and the script prints the end of the log; a missing voice-activity file (`silero_vad.onnx`) only
+(and the Pocket TTS files, unless you chose Kokoro) and, with `--network`, the PIN and certificates. For anything that
+is off it asks "y/N" and fixes it, then starts Santa in the background and opens the page. It does not check the
+voice-activity and speech-recognition files from step 2 of the install, or the Kokoro files if you chose Kokoro. A
+missing Kokoro or speech-recognition file stops Santa at start, and the script prints the end of the log; a missing
+voice-activity file (`silero_vad.onnx`) only
 shows when the page opens: the page cannot connect to Santa, and the log shows the error. The log is `local/run/santa.log`. `stop-santa.sh` stops what the start script started.
 
 To run in a terminal instead: `scripts/run-web.sh` (add `--network` for the home network). It runs `python -m santa.web`
@@ -137,9 +137,10 @@ the microphone and press Call. The server listens on `127.0.0.1` only, unless yo
 - Children are read from `local/profiles.json` (register them once with `/add Name` in `chat.py`, or edit the file).
 
 What Santa does, and how to change it (set values in `local/santa.env`; see [Customize](#customize)):
-- **Voice:** Kokoro `am_michael` at 0.9 by default (`SANTA_VOICE`, `SANTA_SPEED`). A Kokoro blend is written as weighted
-  names, e.g. `SANTA_VOICE=am_santa:70,bm_fable:30`. Kyutai Pocket TTS is an alternative voice that needs an extra
-  install; see [Pocket TTS](#pocket-tts-optional).
+- **Voice:** Kyutai Pocket TTS, voice `stuart_bell`, by default (`SANTA_VOICE`; any built-in Pocket voice works). Pocket
+  has no speed setting, and each line is a fresh take, so the same words sound a little different each time. Santa
+  loads it offline: it refuses to start Pocket TTS unless `HF_HUB_OFFLINE=1`, which Santa sets by default. Kokoro is
+  an alternative voice that needs two extra files; see [Kokoro](#kokoro-optional).
 - **Listening:** `SANTA_EOS_MS` (end-of-speech wait, default 1200), `SANTA_EOS_EXTEND=0` (turn off the one-time
   extension to 1800 ms for short turns), `SANTA_STT_MODEL` (default `mlx-community/whisper-small.en-mlx`).
 - **Conversation arc** (asks each child's Christmas wish, then offers to say goodbye or to tell about the North Pole):
@@ -173,18 +174,19 @@ What Santa does, and how to change it (set values in `local/santa.env`; see [Cus
 - **Output filter:** `SANTA_FILTER=legacy` switches to an alternative filter that repairs replies instead of only
   removing text (`santa/legacy/`). It is a fallback.
 
-### Pocket TTS (optional)
+### Kokoro (optional)
 
-Santa's default voice is Kokoro. Kyutai Pocket TTS is an alternative; the one-time install does not set it up. To try
-it (needs the internet once):
+Santa's default voice is Kyutai Pocket TTS. Kokoro is an alternative: step 1 of the install sets up its code, but the
+one-time install does not download its two files. To try it (needs the internet once):
 ```bash
-source ~/.venvs/talking-santa-h/bin/activate
-pip install pocket-tts==4.0.1                       # the version in requirements.lock; also installs torch
-python tools/probes/j1_audition.py pocket-fetch     # downloads the model and the built-in English voices
+M=~/.cache/talking-santa/models; mkdir -p $M
+curl -L -o $M/kokoro-v1.0.onnx https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.onnx
+curl -L -o $M/voices-v1.0.bin  https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin
 ```
-Then set `SANTA_TTS=pocket` in `local/santa.env` and restart Santa. The default Pocket voice is `peter_yearsley`; any
-built-in Pocket voice works in `SANTA_VOICE`; there is no speed setting. Santa loads it offline: it refuses to start
-Pocket TTS unless `HF_HUB_OFFLINE=1`, which Santa sets by default.
+Then set `SANTA_TTS=kokoro` in `local/santa.env` and restart Santa. The default Kokoro voice is `am_michael` at speed
+0.9 (`SANTA_VOICE`, `SANTA_SPEED`). A Kokoro blend is written as weighted names, e.g.
+`SANTA_VOICE=am_santa:70,bm_fable:30`. With Kokoro, Santa's greeting laugh is also slower than his speech
+(`LAUGH_SPEED` in `santa/web/canned.py`); Pocket has no speed setting.
 
 ## Use on your home network
 
@@ -480,8 +482,8 @@ Layout:
   `spec.py` (every reply rule), `speech.py` (remove-only streaming filter), `safety.py` (wrapper for callers of the
   filter), `memory.py` (per-child facts in `local/profiles.json`), `local.py` (finds your files in `local/`),
   `config.py` (model and memory settings, read from the environment), plus `arc.py`, `cues.py`, `gifts.py`, `songs.py`
-  - `santa/web/` - the call page: voice activity detection and end of speech, Whisper speech recognition, Kokoro
-    voice, call state machine (uses the brain unchanged); the page itself is in `santa/web/static/`
+  - `santa/web/` - the call page: voice activity detection and end of speech, Whisper speech recognition, Pocket TTS
+    (or Kokoro) voice, call state machine (uses the brain unchanged); the page itself is in `santa/web/static/`
   - `santa/legacy/` - the alternative output filter (`SANTA_FILTER=legacy`)
 - `chat.py` - typed chat
 - `profiles.example.json` - example children's profiles (made-up names); copy it to `local/profiles.json`
@@ -518,16 +520,16 @@ It is a record for auditing, not an install recipe: some pins (torch, mlx) are p
 
 ## Models
 
-The four default models and the optional Pocket TTS voice are open-weight models that run on this Mac. Each
+The four default models and the optional Kokoro voice are open-weight models that run on this Mac. Each
 model's own page has its terms.
 
 | Role | Model | Developer | Source |
 |---|---|---|---|
 | Language model | Gemma 4 e4b, served by Docker Model Runner (the file comes from Docker's `ai/gemma4`) | Google DeepMind | [Google's model card](https://ai.google.dev/gemma/docs/core/model_card_4) |
 | Speech recognition | Whisper small.en via mlx-whisper (the `mlx-community/whisper-small.en-mlx` conversion) | OpenAI | [openai/whisper](https://github.com/openai/whisper), [conversion](https://huggingface.co/mlx-community/whisper-small.en-mlx) |
-| Voice | Kokoro-82M v1.0 via kokoro-onnx | hexgrad | [hexgrad/Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) |
+| Voice | Pocket TTS 4.0.1, built-in voice `stuart_bell` (the `kyutai/pocket-tts-without-voice-cloning` weights) | Kyutai | [kyutai-labs/pocket-tts](https://github.com/kyutai-labs/pocket-tts), [weights](https://huggingface.co/kyutai/pocket-tts-without-voice-cloning) |
 | Voice activity | Silero VAD v5 | Silero team | [snakers4/silero-vad](https://github.com/snakers4/silero-vad) |
-| Voice, optional instead of Kokoro (`SANTA_TTS=pocket`; see [Pocket TTS](#pocket-tts-optional)) | Pocket TTS | Kyutai | [kyutai-labs/pocket-tts](https://github.com/kyutai-labs/pocket-tts) |
+| Voice, optional instead of Pocket TTS (`SANTA_TTS=kokoro`; see [Kokoro](#kokoro-optional)) | Kokoro-82M v1.0 via kokoro-onnx | hexgrad | [hexgrad/Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) |
 
 License: see each model's page. For Gemma 4, Google's model card lists Apache 2.0. Why Gemma 4 e4b and how the
 candidates were compared: [docs/model-selection.md](docs/model-selection.md).

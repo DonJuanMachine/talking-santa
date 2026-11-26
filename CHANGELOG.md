@@ -6,6 +6,12 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
 
 ## [Unreleased]
 
+### Default voice: Pocket TTS `stuart_bell`
+- Santa now speaks with Kyutai Pocket TTS, built-in voice `stuart_bell`, by default, instead of Kokoro `am_michael`. Kokoro is still available with `SANTA_TTS=kokoro` (default voice `am_michael` at 0.9, blends as before). Chosen by ear from the J1 audition. Pocket has no speed setting and samples each line fresh, so repeated lines differ a little.
+- The one-time install sets up Pocket TTS: `pip install -e ".[web,dev]"` now installs `pocket-tts==4.0.1` (and torch), and step 2 runs `tools/probes/j1_audition.py pocket-fetch` once. The two Kokoro files are no longer downloaded by the install; the README's new Kokoro section has them. The old "Pocket TTS (optional)" section is gone.
+- Memory: Pocket uses about 0.3 GB more than Kokoro at its peak (J1 bench: about 1.0 GB against 0.7 GB), so the README now says speech recognition and the voice use under 2 GB beside the language model. Estimated from separate runs, not measured with Pocket in the full app.
+- Changed: `santa/web/settings.py`, `scripts/start-santa.sh`, `pyproject.toml`, `local.example/santa.env.example`, README, `docs/configuration.md`, `docs/architecture.md`. Test: `tests/spec/test_voice_default.py`.
+
 ### README
 - "What you need" now gives the memory needed: an Apple silicon Mac with 16 GB or more. The language model uses about 5 GB while it runs, and speech recognition and the voice under 1 GB more; replies may come more slowly on older chips. Estimated from the model's size; tested only on the 32 GB Mac named there.
 

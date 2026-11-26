@@ -1,4 +1,5 @@
-"""Text to speech: Kokoro-82M v1.0 through kokoro-onnx (onnxruntime, CPU), in-process. Chosen in H1.
+"""Text to speech, in-process: Kyutai Pocket TTS by default (voice stuart_bell), or Kokoro-82M v1.0 through kokoro-onnx
+(onnxruntime, CPU) with SANTA_TTS=kokoro. Kokoro was chosen in H1; Pocket became the default after the J1 audition.
 
 Only santa.web.safe.Spoken objects are accepted: text that came out of the brain's speech gate, or a canned line that
 passed the same rule checks at startup (see safe.py).
@@ -74,7 +75,7 @@ class KokoroTTS:
 
 
 class PocketTTS:
-    """Kyutai Pocket TTS (pocket-tts 4.0.1, CPU, built-in voices only; no voice cloning). Chosen with SANTA_TTS=pocket.
+    """Kyutai Pocket TTS (pocket-tts 4.0.1, CPU, built-in voices only; no voice cloning). The default (SANTA_TTS=pocket).
 
     Pocket samples randomly, so every line is a fresh take. There is no short-line cache here, so "Ho ho ho!" does
     not repeat the same take. The canned lines are still rendered once (canned.py).

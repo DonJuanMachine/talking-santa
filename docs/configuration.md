@@ -34,10 +34,10 @@ Every setting Santa reads, with its default. The defaults below are the values i
 
 | Setting | Default | What it does |
 |---|---|---|
-| `SANTA_TTS` | `kokoro` | The voice engine: `kokoro` or `pocket` (Kyutai Pocket TTS, which needs the extra install in the README's [Pocket TTS](../README.md#pocket-tts-optional) section). Anything else stops Santa at start. |
-| `SANTA_VOICE` | `am_michael` (`peter_yearsley` when `SANTA_TTS=pocket`) | The voice name. A Kokoro blend is written as weighted names, for example `am_santa:70,bm_fable:30`. |
+| `SANTA_TTS` | `pocket` | The voice engine: `pocket` (Kyutai Pocket TTS) or `kokoro` (which needs the two extra files in the README's [Kokoro](../README.md#kokoro-optional) section). Anything else stops Santa at start. |
+| `SANTA_VOICE` | `stuart_bell` (`am_michael` when `SANTA_TTS=kokoro`) | The voice name: any built-in Pocket TTS voice, or a Kokoro voice. A Kokoro blend is written as weighted names, for example `am_santa:70,bm_fable:30`. |
 | `SANTA_SPEED` | `0.9` | Speaking speed. Kokoro only; Pocket TTS has no speed setting. |
-| `SANTA_MODELS_DIR` | `~/.cache/talking-santa/models` | Where the Kokoro model and voices and the Silero VAD file are read from. |
+| `SANTA_MODELS_DIR` | `~/.cache/talking-santa/models` | Where the Silero VAD file and the Kokoro model and voices are read from. Pocket TTS files are in the Hugging Face cache. |
 
 ## Listening and speech recognition
 

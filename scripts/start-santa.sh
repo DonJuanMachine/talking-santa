@@ -41,7 +41,7 @@ fi
 MODEL="${SANTA_MODEL:-ai/gemma4:e4b}"
 BASE="${SANTA_BASE_URL:-http://localhost:12434/engines/v1}"
 PORT="${SANTA_PORT:-8765}"
-TTS="${SANTA_TTS:-kokoro}"
+TTS="${SANTA_TTS:-pocket}"
 [[ "$PORT" =~ ^[0-9]{1,5}$ ]] && [ "$PORT" -ge 1 ] && [ "$PORT" -le 65535 ] \
   || die "SANTA_PORT must be a number from 1 to 65535 (it is: $PORT)."
 [[ "$BASE" =~ ^https?:// ]] || die "SANTA_BASE_URL must start with http:// or https:// (it is: $BASE)."
@@ -115,8 +115,8 @@ else ok "No competing models in memory"; fi
 # 7. Santa's voice
 if [ "$TTS" = pocket ]; then
   if [ -d "$HOME/.cache/huggingface/hub/models--kyutai--pocket-tts-without-voice-cloning" ]; then
-    ok "Voice: Pocket TTS (${SANTA_VOICE:-peter_yearsley})"
-  else die "Pocket TTS voice files are missing. See README (Pocket TTS) to fetch them once."; fi
+    ok "Voice: Pocket TTS (${SANTA_VOICE:-stuart_bell})"
+  else die "Pocket TTS voice files are missing. See README (One-time install, step 2) to fetch them once."; fi
 else ok "Voice: Kokoro (${SANTA_VOICE:-am_michael})"; fi
 
 # 8. Home-network extras
