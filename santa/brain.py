@@ -235,6 +235,8 @@ class Santa:
             key, sad = self._gift_key(speaker), cues.sounds_sad(text)
             if sad or self._gentle.get(self._child_key(key), 0) > 0:
                 note += persona.gentle_note(key or gifts.GUEST, sad)
+            if (loss := spec.loss_of(text)) is not None:      # "my dog died": say sorry and name who (GRIEF_NOTE)
+                note += persona.grief_note(key or gifts.GUEST, *loss)
         if self.gifts is not None and kind != guide.HELLO:   # the hello says "ask nothing else": the gift question waits
             note += self.gifts.note(self._gift_key(speaker), text)
         if self.nice_on and cues.talks_nice_list(text):

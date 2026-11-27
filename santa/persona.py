@@ -226,6 +226,19 @@ def gentle_note(name: str, sad_now: bool) -> str:
     return (GENTLE_SAD if sad_now else GENTLE_AFTER).format(name=_one_line(name))
 
 
+# Grief (gentle mode, brain.py): when the child says who died (spec.loss_of), after GENTLE_SAD. Live check before it:
+# 18 of 20 grief replies were the persona's example word for word ("That sounds hard. Let's tell your mommy or daddy
+# together."), with no "I'm sorry" and no mention of who died (tools/probes/topics_probe.py).
+GRIEF_NOTE = ("\n({name} just told you someone they love died: \"{loss}\". Say you are so sorry, and name who {name} "
+              "lost, like \"I'm so sorry about {who}.\" Then say one warm, true thing, like that {name} loved them "
+              "very much and can keep the happy memories. Then gently suggest telling a grown-up. Never say where "
+              "they are now (each family explains that in its own way), and never say they will come back.)")
+
+
+def grief_note(name: str, loss: str, who: str) -> str:
+    return GRIEF_NOTE.format(name=_one_line(name), loss=_one_line(loss).replace('"', "'"), who=_one_line(who))
+
+
 # Topics Santa answers with care: meeting up, secrets, risky things, money. When the child's words raise one
 # (cues.topic), its note goes on the CURRENT user turn only, like gentle mode. Santa's side is guarded by the matching
 # rules in spec.INTENTS; when one stops a reply, Santa says the topic's line instead of FALLBACK. Each line is

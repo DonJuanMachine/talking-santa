@@ -337,6 +337,26 @@ def _grief_rx(who: str) -> "re.Pattern":
                       rf"|\bdeath\s+of\s+(?:your\s+|my\s+|our\s+|the\s+)?(?:\w+\s+)?{w}\b", re.IGNORECASE)
 
 
+_MY_BEFORE = re.compile(r"\b(?:my|our)\s+(?:[\w'’-]+\s+)?$", re.IGNORECASE)
+
+
+def loss_of(child_said) -> tuple[str, str] | None:
+    """(the child's words about the loss, who in Santa's words) for the first loss in `child_said`, else None:
+    "my dog died" -> ("my dog died", "your dog"); "Mittens passed away" -> ("Mittens passed away", "Mittens").
+    For the grief note (persona.grief_note); the same reading as the grief words above."""
+    text = str(child_said or "")
+    for m in _LOSS_RX.finditer(text):
+        who = m.group(1)
+        if who.lower() in _NOT_WHO:
+            continue
+        my = _MY_BEFORE.search(text[max(0, m.start() - 40):m.start()])
+        if my is None:
+            return text[m.start():m.end()], who
+        your = re.sub(r"^(?:my|our)\b", "your", my.group(), flags=re.IGNORECASE)   # "my grandma's " -> "your grandma's "
+        return text[m.start() - len(my.group()):m.end()], your + who
+    return None
+
+
 def _grief_spans(text: str, child_said: str) -> list[tuple[int, int]]:
     spans = []
     for m in _LOSS_RX.finditer(child_said):

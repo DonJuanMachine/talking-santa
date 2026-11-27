@@ -6,6 +6,11 @@ Detail for each stage lives in `docs/history/STAGE_*.md`. Design lives in `docs/
 
 ## [Unreleased]
 
+### Grief: Santa says he is sorry and names who the child lost
+- When a child says who died ("my dog died", "Mittens passed away", "my grandma's dog died"), that turn's note (gentle mode) tells Santa to say he is so sorry, name who they lost ("I'm so sorry about your dog"), say one warm, true thing, then suggest telling a grown-up; never to say where they are now (each family explains that in its own way) or that they will come back. Before, the model copied the persona's example almost word for word.
+- Live check (`tools/probes/topics_probe.py`, 5 losses, 4 replies each): before, 0 of 20 replies said sorry or named who died (18 were "That sounds hard, Leo. Let's tell your mommy or daddy together."); after, 20 of 20 did ("I'm so sorry about your grandma, Leo. You must have loved her very much, and you can keep all those happy memories."). All 20 still suggest a grown-up, none says where they are or that they will come back, none was stopped. `SANTA_GENTLE=0` turns it off with gentle mode.
+- Changed: `santa/spec.py` (`loss_of`), `santa/persona.py` (`GRIEF_NOTE`), `santa/brain.py`, README. Test: `tests/spec/test_time_and_gifts.py`.
+
 ### Safety: comforting words about a loss the child just told Santa
 - After the child says who died ("my dog died", "Mittens passed away", "my grandpa is dead"), Santa may say "dead" or "death" next to that one name while comforting: "I'm so sorry your dog is dead", "Grandma's death", "the death of your goldfish". Any other "dead" in the reply is still stopped ("Everyone you love will be dead someday", "my reindeer are dead too"), "die" is never allowed, and without such words from the child "your dog is dead" stays blocked. The child's words reach the TTS tripwire too, so it agrees.
 - Live check (`tools/probes/topics_probe.py`, 5 losses, 4 replies each): the current model never said "dead" or "death" in 20 grief replies, so nothing was stopped before or after; this guards other models and persona changes. The replies were short and alike (18 of 20 were "That sounds hard, Leo. Let's tell your mommy or daddy together."), with no "I'm sorry" and no mention of who died.

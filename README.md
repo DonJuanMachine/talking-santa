@@ -188,7 +188,9 @@ What Santa does, and how to change it (set values in `local/santa.env`; see [Cus
   other "Ho ho". `SANTA_HO_ONCE=0` turns it off. To change the laugh, edit `laugh`, `LAUGH_SPEED` and `LAUGH_PAUSE_S`
   in `santa/web/canned.py`.
 - **Gentle mode** (on by default): when a child sounds sad or scared, Santa is told to comfort softly and to stay calm
-  for that child's next 3 turns (no "Ho ho ho", no jokes). `SANTA_GENTLE=0` turns it off.
+  for that child's next 3 turns (no "Ho ho ho", no jokes). When the child says who died ("my dog died"), Santa is also
+  told to say he is so sorry, name who they lost, say one warm thing, and suggest telling a grown-up, and never to say
+  where they are now or that they will come back. `SANTA_GENTLE=0` turns it off.
 - **Meeting up, secrets, risky things, money** (always on): Santa never suggests meeting, keeps or asks for a secret,
   tells a child to do something that can hurt without a grown-up, or talks about prices or stores; a reply that does
   is stopped, and Santa says that topic's own line instead of the usual "tell your grown-up" line ("Oh, I wish I could,
