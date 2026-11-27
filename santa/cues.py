@@ -10,6 +10,31 @@ GOODBYE_WORDS = re.compile(
     r"|(?:^|[,.!]\s*|\b(?:ok|okay|alright|well)[\s,]+)see you\b", re.I)
 
 
+# The child asked Santa something: a "?" (speech-to-text writes one), or words that open a question ("can you ...",
+# "what is ...", "do you ..."). Such a turn is the child leading, so Santa's conversation starters wait (guide.py).
+QUESTION_OPENERS = re.compile(
+    r"^\s*(?:(?:hey|hi|so|and|but|um+|uh+|well|okay|ok|santa)[\s,]+)*(?:what|what's|whats|where|where's|when|why|who"
+    r"|whose|how|which|can|could|will|would|do|does|did|is|are|am|have|has|should|may)\b"
+    r"|\b(?:can|could|will|would|do|did|are|have)\s+you\b", re.I)
+
+
+def asks_santa(text) -> bool:
+    """The child's words ask Santa a question."""
+    t = str(text or "").replace("’", "'")
+    return "?" in t or QUESTION_OPENERS.search(t) is not None
+
+
+# A remembered like that happens in certain weather ("likes snow angels", "loves the beach"). With one in the note,
+# Santa sometimes asked "Did you play in the snow today?" (live, 2026-11-27, about 4 in 200 replies, all with
+# "likes snow angels"): persona.WEATHER_FACT_NOTE goes with it.
+WEATHER_LIKE = re.compile(r"\b(?:snow\w*|sled\w*|ski|skiing|skat\w*|ice|icy|rain\w*|puddles?|beach\w*|swim\w*|pools?"
+                          r"|winter|summer|sunny|sunshine)\b", re.I)
+
+
+def weather_like(fact) -> bool:
+    return WEATHER_LIKE.search(str(fact or "")) is not None
+
+
 def sounds_like_goodbye(text: str) -> bool:
     """The child seems to be saying goodbye (used to add the time-of-day note on that turn)."""
     return GOODBYE_WORDS.search(str(text).replace("’", "'")) is not None

@@ -148,21 +148,34 @@ What Santa does, and how to change it (set values in `local/santa.env`; see [Cus
   extension to 1800 ms for short turns), `SANTA_STT_MODEL` (default `mlx-community/whisper-small.en-mlx`).
 - **Conversation arc** (asks each child's Christmas wish, then offers to say goodbye or to tell about the North Pole):
   off by default (`SANTA_ARC=0`); `SANTA_ARC=1` turns it on (experimental).
-- **Gift question** (on by default): if gifts have not come up by a child's 5th turn, Santa is told to ask one
-  Christmas-wish question. If the reply did not ask it, it is tried again on up to 2 more turns. Never while the child
-  sounds sad (and for 2 turns after). `SANTA_GIFT_ASK=0` turns it off, `SANTA_GIFT_ASK_TURN` changes the turn. Off when
-  `SANTA_ARC=1`. Guests share one slot. Code: `santa/gifts.py`.
-- **Conversation guide** (on by default): on a registered child's first turn of a call (usually "I'm Emma"), Santa is
+- **Gift question** (on by default): one Christmas-wish question, if gifts have not come up. With the conversation
+  guide on it is the guide's third conversation starter (below); with `SANTA_GUIDE=0` it comes on the child's 5th turn
+  (`SANTA_GIFT_ASK_TURN` changes the turn). If the reply did not ask it, it is tried again. Never while the child sounds
+  sad (and for 2 turns after). `SANTA_GIFT_ASK=0` turns it off. Off when `SANTA_ARC=1`. Guests share one slot. Code:
+  `santa/gifts.py`.
+- **Conversation guide** (on by default): after the greeting, on a child's first turn (usually "I'm Emma"), Santa is
   told to say hello by name, to say he is so happy to hear from them again if they called before (call page), and to
-  ask how they are, nothing else. A guest (a child who is not registered) gets the same hello and "how are you",
-  once per call, without the welcome back. On the next turn a registered child is asked one question about something
-  the child likes. If the child's profile has a remembered like or pet ("likes snow angels", "has a cat named Mittens"), he asks about that,
-  one per call, a different one each call (each day without the call log); wishes are never used, the gift question
-  covers those. The likes question waits while the child is sad and gives way to the gift question. Any child,
-  registered or not, who asks about the nice or naughty list is told yes, they are on the nice list, with no
-  conditions ("if you are good"). Santa is also told to ask mostly about what children like, never to ask about their
-  dreams (unless the child brings dreams up; a "dream gift" is fine), and to say "sweet dreams" only from 7 PM.
-  `SANTA_GUIDE=0` turns the notes off; hello and likes are off when `SANTA_ARC=1`. Code: `santa/guide.py`.
+  ask how they are, nothing else. Then, whenever the child has gone two turns without asking Santa a question, Santa
+  opens a conversation starter, each at most once per call, in this order:
+  1. **Kindness:** "Have you done something kind or nice for someone today?" If the child did, Santa says how kind that
+     was; if not, "That's okay! You could give Nana a big hug today.", with someone from the child's `family` list in
+     `profiles.json` (a different one each call; each day without the call log), or "someone who needs it" without
+     one. Never tied to the nice list.
+  2. **What they like:** one question about something the child likes; if the profile has a remembered like or pet
+     ("likes snow angels", "has a cat named Mittens"), about that one (a different one each call). Wishes are never used.
+  3. **Christmas wish:** the gift question, if gifts have not come up.
+  After 7 answers in a row with no question to Santa, a slow wrap-up: "If you don't have any questions for Santa, you
+  can go and enjoy your day, but I'm happy to talk more! Would you like to talk some more?" Yes: the wish question if
+  it was never asked, else a remembered like not asked yet this call, else what they like to play. No (or bye): a warm
+  goodbye, and after it Santa answers in a few words and starts nothing new until the child asks something. Santa is
+  told never to start saying goodbye on his own before that. The count starts again after the wrap-up.
+  A question from the child starts the counts again. No starter on a turn where the child is sad (or was a moment
+  ago), raises a topic Santa answers with care, or tells of a loss. Guests (children who are not registered) get the
+  hello, without the welcome back, and the starters; all guests share one slot. Any child, registered or not, who asks
+  about the nice or naughty list is told yes, they are on the nice list, with no conditions ("if you are good"). Santa
+  is also told to ask about what the child just said (or else about what they like), never to ask about their dreams
+  (unless the child brings dreams up; a "dream gift" is fine), and to say "sweet dreams" only from 7 PM.
+  `SANTA_GUIDE=0` turns the notes off; hello and starters are off when `SANTA_ARC=1`. Code: `santa/guide.py`.
 - **Santa's backstory:** a fixed North Pole world (Mrs. Claus is Mary, the nine reindeer, four named elves) so he
   answers the same way every call. Replace it with your own in `local/santa_world.txt` (see `local.example/README.md`);
   the built-in text is `WORLD_DEFAULT` in `santa/persona.py`.

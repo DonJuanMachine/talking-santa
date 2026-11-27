@@ -1,4 +1,6 @@
-"""Gift question (2026-11-10, Don's request): if gifts have not come up by a child's 5th turn, Santa gently asks one
+"""Gift question (2026-11-10, Don's request). With the conversation guide on (the default), it is the guide's third
+conversation starter (santa/guide.py), and this module only decides whether it may still be asked (open). With
+SANTA_GUIDE=0, the original rule: if gifts have not come up by a child's 5th turn, Santa gently asks one
 Christmas-wish question ("What would you like for Christmas?"). Asked once; if the reply did not get to it (for example
 the child was sad and Santa comforted instead), it is tried on up to MAX_TRIES - 1 more turns, then dropped.
 
@@ -74,19 +76,26 @@ class Gifts:
     def state(self, name: str | None) -> ChildGifts:
         return self.kids.get(self._key(name)) or ChildGifts()
 
-    def due(self, name: str | None, child_text: str = "") -> bool:
-        """Does this child's turn (saying child_text) get the note? Pure."""
+    def open(self, name: str | None, child_text: str = "") -> bool:
+        """May the wish question still be asked on this turn? Gifts have not come up, tries are left, and the child is
+        not sad now or a moment ago. Pure. With the conversation guide on, it is the guide's GIFT starter (guide.py)."""
         st = self.state(name)
-        return (not st.covered and st.turns + 1 >= ASK_AT_TURN and st.tries < MAX_TRIES and st.calm_in == 0
-                and not sounds_sad(child_text))
+        return not st.covered and st.tries < MAX_TRIES and st.calm_in == 0 and not sounds_sad(child_text)
+
+    def due(self, name: str | None, child_text: str = "") -> bool:
+        """Does this child's turn (saying child_text) get the note on its own, by turn number? Pure. Only used when
+        the conversation guide is off (SANTA_GUIDE=0)."""
+        return self.open(name, child_text) and self.state(name).turns + 1 >= ASK_AT_TURN
 
     def note(self, name: str | None, child_text: str = "") -> str:
         return persona.gift_note(name or GUEST) if self.due(name, child_text) else ""
 
-    def advance(self, name: str | None, child_text: str, spoken: str, held: bool = False) -> bool:
+    def advance(self, name: str | None, child_text: str, spoken: str, held: bool = False,
+                carried: bool | None = None) -> bool:
         """Record one spoken turn. Returns whether that turn carried the note. `held`: the note was due but not sent
-        (the guide's hello turn), so it is not counted as a try."""
-        had = self.due(name, child_text) and not held
+        (the guide's hello turn), so it is not counted as a try. `carried`: whether the turn carried it, when the
+        conversation guide decides (its GIFT starter); None: by turn number (due)."""
+        had = carried if carried is not None else self.due(name, child_text) and not held
         st = self.kids.setdefault(self._key(name), ChildGifts())
         st.turns += 1
         st.tries += had

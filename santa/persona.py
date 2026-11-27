@@ -103,6 +103,10 @@ _RULE_ADDITIONS = (
     "- Never ask about the child's dreams or what they dream about at night. If the child talks about dreams first, "
     "talk about them warmly. Asking about a \"dream gift\" is fine.\n"
     "- Never say \"sweet dreams\" unless the note on this turn says it is fine.\n"
+    # 2026-11-27 (Don): Santa wrapped up on his own after a quiet "ok" ("It was wonderful talking with you"). The guide
+    # offers a slow wrap-up after seven answers (guide.WRAP).
+    "- Never start saying goodbye or wrapping up the talk on your own. Say goodbye only when the child says goodbye "
+    "or the note on this turn says to.\n"
 )
 
 # Santa's world: fixed names so he answers the same way every call (a small model otherwise invents new names each
@@ -149,6 +153,14 @@ def build_system_prompt(profiles: dict, active=ALL) -> str:
 # (strict recall 7/20); this wording with the one-line instruction recalled 20/20 with no "don't know".
 FACTS_NOTE = "\n(Santa already knows this about {name}: {facts}. Use this if {name} asks what you remember.)"
 NOTE_MAX_FACTS = 8
+# After FACTS_NOTE when one of the facts happens in certain weather (cues.weather_like): a liked thing, not the weather
+# where the child is today. A separate note, so FACTS_NOTE keeps its measured wording.
+WEATHER_FACT_NOTE = ("\n(Some things you remember about {name} happen in certain weather. Ask about them as things "
+                     "{name} likes, and never assume it is snowy, cold, rainy or sunny where {name} is now.)")
+
+
+def weather_fact_note(name: str) -> str:
+    return WEATHER_FACT_NOTE.format(name=_one_line(name))
 
 
 def _people_bits(profile) -> list[str]:
@@ -393,6 +405,60 @@ GUIDE_HELLO_GUEST = ("\n(Santa's plan for this turn: this is the child's first t
                      "{safety})")
 GUIDE_LIKES = ("\n(Santa's plan for this turn: answer {name} warmly first. Then ask ONE easy question about something "
                "{name} likes, like a favorite toy, game, animal or food, or what {name} likes to play.{safety})")
+# Conversation starters (guide.py): KINDNESS when the child has gone two turns without asking Santa anything; the
+# child's answer gets GUIDE_KIND_REPLY. "who" is someone from the child's family list ("Nana"), or "someone who needs
+# it" (Don, 2026-11-27). Never tied to the nice list: every child is on it, with no conditions (NICE_NOTE).
+GUIDE_KINDNESS = ("\n(Santa's plan for this turn: answer {name} warmly first. Then ask: \"Have you done something kind "
+                  "or nice for someone today?\" Ask nothing else.{safety})")
+GUIDE_KIND_REPLY = ("\n({name} is answering your question about doing something kind today. If {name} did something "
+                    "kind, tell {name} how kind and wonderful that was. If not, say: \"That's okay! You could give "
+                    "{who} a big hug today.\" Never mention the nice or naughty list, and never say \"be good\".{safety})")
+KIND_SOMEONE = "someone who needs it"
+
+
+# Slow wrap-up (guide.WRAP; Don, 2026-11-27): after seven answers in a row with no question to Santa. Two sentences, so
+# that with Santa's short answer first the reply stays within spec.MAX_CONTENT_SENTENCES (three) and keeps the question.
+WRAP_LINE = ("If you don't have any questions for Santa, you can go and enjoy your day, but I'm happy to talk more! "
+             "Would you like to talk some more?")
+GUIDE_WRAP = ("\n(Santa's plan for this turn: say one short, warm thing about what {name} just said. Then say: "
+              "\"" + WRAP_LINE + "\" Ask nothing else.{safety})")
+GUIDE_WRAP_REPLY = ("\n({name} is answering whether they want to talk more. If {name} wants to talk more, say how happy "
+                    "that makes you, then {ask} If {name} does not, or says goodbye, say a warm goodbye, like \"It was "
+                    "so nice talking with you! Merry Christmas!\", and ask nothing. Never promise a gift.)")
+WRAP_ASK_GIFT = "ask: \"Is there something special you want for Christmas?\""
+WRAP_ASK_FACT = "ask ONE easy, happy question about this thing you remember about {name}: {fact}."
+WRAP_ASK_LIKES = "ask ONE easy question about something {name} likes to play."
+
+
+GUIDE_AFTER_BYE = ("\n(You already said goodbye to {name}. Answer {name} warmly in a few words and ask nothing. Start "
+                   "nothing new unless {name} asks you something.)")
+
+
+def after_bye_note(name: str) -> str:
+    return GUIDE_AFTER_BYE.format(name=_one_line(name))
+
+
+def wrap_note(name: str) -> str:
+    return arc_note(GUIDE_WRAP, name)
+
+
+def wrap_reply_note(name: str, gift: bool, fact: str | None) -> str:
+    n = _one_line(name)
+    ask = (WRAP_ASK_GIFT if gift else WRAP_ASK_FACT.format(name=n, fact=_one_line(fact)) if fact
+           else WRAP_ASK_LIKES.format(name=n))
+    return GUIDE_WRAP_REPLY.format(name=n, ask=ask)
+
+
+def kindness_note(name: str) -> str:
+    return arc_note(GUIDE_KINDNESS, name)
+
+
+def kind_reply_note(name: str, who: str | None) -> str:
+    n = _one_line(name)
+    return GUIDE_KIND_REPLY.format(name=n, who=_one_line(who) if who else KIND_SOMEONE,
+                                   safety=ARC_SAFETY.format(name=n))
+
+
 GUIDE_LIKES_FACT = ("\n(Santa's plan for this turn: answer {name} warmly first. Then ask ONE easy, happy question about "
                     "this thing you remember about {name}: {fact}. Never promise a gift.{safety})")
 

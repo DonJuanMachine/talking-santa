@@ -640,7 +640,8 @@ def test_use_world_replaces_the_default_and_caps_its_size(monkeypatch):
     assert persona.use_world("- Your wife is Lumi.\n" + "x" * 5000) is True
     assert "Lumi" in persona.PROMPT_ADDITIONS and "Mary" not in persona.PROMPT_ADDITIONS
     assert "Never offer to sing a song" in persona.PROMPT_ADDITIONS            # the rules stay
-    assert len(persona.PROMPT_ADDITIONS) < persona.WORLD_MAX_CHARS + 1500
+    # the world text is capped; the fixed rules come on top of it (they grow as rules are added)
+    assert len(persona.PROMPT_ADDITIONS) <= len(persona._RULE_ADDITIONS) + persona.WORLD_MAX_CHARS + 2
 
 
 def test_santa_world_file_is_read_from_local(tmp_path):
