@@ -22,6 +22,9 @@ def _defaults(monkeypatch):
     monkeypatch.delenv("SANTA_ARC", raising=False)
     monkeypatch.delenv("SANTA_GIFT_ASK", raising=False)
     monkeypatch.delenv("SANTA_TIME_NOTE", raising=False)
+    # The gift question's own rule (the 5th turn) applies with the conversation guide off. With it on (the default),
+    # the wish question is the guide's third conversation starter: tests/spec/test_guide.py.
+    monkeypatch.setenv("SANTA_GUIDE", "0")
 
 
 class Fake:

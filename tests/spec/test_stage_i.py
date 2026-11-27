@@ -60,6 +60,9 @@ def _arc_on(monkeypatch):
     # Added 2026-11-25: the conversation guide (hello, likes and nice-list notes) adds text to the current user turn
     # when the arc is off; off here for the same reason. Its own tests are in test_guide.py.
     monkeypatch.setenv("SANTA_GUIDE", "0")
+    # Added 2026-11-27: the weather note (a remembered like such as "likes snow") adds text after the facts note; off
+    # here for the same reason. Its own tests are in test_guide.py.
+    monkeypatch.setenv("SANTA_WEATHER_NOTE", "0")
 
 
 class Cycle:

@@ -183,7 +183,8 @@ def test_the_gift_tracker_gets_only_the_models_sentences():
     raw, prefix = CASES[3]
     s = santa([raw])
     seen = []
-    s.gifts = SimpleNamespace(advance=lambda key, text, spoken, held=False: seen.append(spoken), note=lambda *a: "")
+    s.gifts = SimpleNamespace(advance=lambda key, text, spoken, held=False, carried=None: seen.append(spoken),
+                              note=lambda *a: "", open=lambda *a: False)
     run(s, "Emma", "am I on the naughty list?")
     assert seen == [" ".join(prefix)]
 
