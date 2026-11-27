@@ -175,6 +175,19 @@ def test_likes_waits_while_the_child_is_sad():
         assert LIKES_MARK not in say(s, "Leo")
 
 
+@pytest.mark.parametrize("text", ["can you come to my house", "how much does a pony cost", "can you keep a secret",
+                                  "my brother hit me", "are you coming on christmas eve", "can I light the candles",
+                                  "my goldfish died"])
+def test_likes_waits_on_a_topic_or_loss_turn_and_comes_next(text):
+    """The topic's (or the loss's) note answers that turn; a favorite-toy question on top was off topic. The likes
+    question is not used up: it comes on the next ordinary turn."""
+    s = santa(replies=(PLAIN,))
+    say(s, "Leo")
+    assert LIKES_MARK not in say(s, "Leo", text)
+    if "died" not in text:                                       # a loss also starts gentle mode (test above)
+        assert LIKES_MARK in say(s, "Leo", "I like trucks")
+
+
 def test_the_gift_question_wins_when_both_are_due(monkeypatch):
     monkeypatch.setattr(gifts, "ASK_AT_TURN", 2)                 # both due on Leo's 2nd turn
     s = santa(replies=(PLAIN,))
@@ -313,7 +326,7 @@ def test_with_the_guide_off_the_call_log_note_is_on_every_turn_as_before(monkeyp
 # -- dreams ---------------------------------------------------------------------------------------------------------
 def test_the_rules_ask_about_likes_and_not_dreams():
     prompt = santa().system_prompt()
-    assert "most often ask about what the child likes" in prompt
+    assert "ask about what the child just said" in prompt and "ask about something the child likes" in prompt
     assert "Never ask about the child's dreams" in prompt and "\"dream gift\" is fine" in prompt
     assert "Never say \"sweet dreams\" unless the note on this turn says it is fine" in prompt
 

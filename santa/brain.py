@@ -251,14 +251,16 @@ class Santa:
     def _guide_kind(self, speaker: str | None, text: str) -> str | None:
         """The guide note this turn gets (guide.HELLO, guide.LIKES or None). Pure. A guest (not registered) gets the
         hello only, once per call, in one shared slot. The likes question waits while the child is sad (or was a moment
-        ago) and on a turn that gets the gift question."""
+        ago), on a turn that raises a topic Santa answers with care or a loss (cues.topic, spec.loss_of: "can you come
+        to my house" got "...What is your favorite toy?"; 2026-11-27), and on a turn that gets the gift question."""
         if self.guide is None:
             return None
         if not speaker or speaker not in self.profiles:
             return self.guide.kind(None)
         k = self._child_key(speaker)
-        gentle = cues.sounds_sad(text) or (self.gentle_on and self._gentle.get(k, 0) > 0)
-        kind = self.guide.kind(speaker, gentle=gentle)
+        wait = (cues.sounds_sad(text) or (self.gentle_on and self._gentle.get(k, 0) > 0)
+                or cues.topic(text) is not None or spec.loss_of(text) is not None)
+        kind = self.guide.kind(speaker, gentle=wait)
         if kind == guide.LIKES and self.gifts is not None and self.gifts.due(speaker, text):
             return None
         return kind
