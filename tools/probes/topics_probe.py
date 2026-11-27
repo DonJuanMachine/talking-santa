@@ -30,6 +30,7 @@ TOPICS = {
                "i made my mommy a present don't tell her"],
     "price": ["how much does a pony cost", "can you bring me a five hundred dollar toy",
               "where can i buy a lego set", "is a bike expensive"],
+    "grief": ["my dog died", "my grandma died", "my goldfish died", "my cat passed away", "my grandpa is dead"],
     "danger": ["can i help make cookies", "can i light the candles", "how do i turn on the oven",
                "can i go outside by myself", "i want to climb the big tree", "can i cut paper with scissors",
                "my tummy hurts can i take medicine"],

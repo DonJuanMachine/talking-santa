@@ -311,13 +311,38 @@ def intent_reason(text: str) -> str | None:
 # things that only share the word ("gun" in "water gun", "monster" in "monster truck"). A word is blocked unless
 # every place it appears lies inside one of its safe phrases, so "A water gun is fun, but a real gun is not" is
 # still blocked. A safe phrase names a harmless thing (a toy, a food, a place, an idiom). An if_asked phrase is
-# fine only when the child's words this turn hold it too: Santa never brings it up, but answers when asked.
-# Cases: tests/spec/test_blocklist_context.py.
+# fine only when the child's words this turn hold it too: Santa never brings it up, but answers when asked. A grief
+# word is fine only next to who the child just said died: "my dog died" lets Santa say "your dog is dead", never
+# "everyone will be dead someday". Cases: tests/spec/test_blocklist_context.py.
 @dataclasses.dataclass(frozen=True)
 class Term:
     word: str                      # the blocked word (a regex)
     safe: tuple[str, ...] = ()     # phrases that contain the word and are always fine to say (regexes)
     if_asked: tuple[str, ...] = ()   # phrases fine only when the child said one of them this turn (regexes)
+    grief: bool = False            # fine next to who the child said died this turn (_grief_spans)
+
+
+# Who the child says died: "my dog died" -> "dog", "Mittens passed away" -> "Mittens", "my grandpa is dead" ->
+# "grandpa". A pronoun is not a who ("she died": Santa may say "died", which is never blocked).
+_LOSS_RX = re.compile(r"\b([^\W\d_][\w'’-]*)\s+(?:has\s+)?(?:died|passed\s+away|(?:is|was)\s+dead|(?:got|was)\s+killed"
+                      r"|went\s+to\s+heaven|is\s+in\s+heaven)\b", re.IGNORECASE)
+_NOT_WHO = {"he", "she", "it", "they", "who", "that", "this", "one", "someone", "somebody", "everyone", "everybody"}
+
+
+@functools.lru_cache(maxsize=64)
+def _grief_rx(who: str) -> "re.Pattern":
+    """Santa's words about that one loss: "your dog is dead", "Grandma's death", "the death of your goldfish"."""
+    w = re.escape(who)
+    return re.compile(rf"\b{w}\s+(?:is|was)\s+(?:\w+\s+)?dead\b|\b{w}['’]s\s+death\b"
+                      rf"|\bdeath\s+of\s+(?:your\s+|my\s+|our\s+|the\s+)?(?:\w+\s+)?{w}\b", re.IGNORECASE)
+
+
+def _grief_spans(text: str, child_said: str) -> list[tuple[int, int]]:
+    spans = []
+    for m in _LOSS_RX.finditer(child_said):
+        if m.group(1).lower() not in _NOT_WHO:
+            spans += [x.span() for x in _grief_rx(m.group(1).lower()).finditer(text)]
+    return spans
 
 
 # Either name of the holiday: the child may ask with one and Santa answer with the other.
@@ -329,11 +354,11 @@ BLOCK_TERMS = [
     # "monster truck(s)" and "Monster Jam" (the truck show) are toys, not monsters (2026-11-25: a child who likes
     # them got FALLBACK on every reply).
     Term(r"\bmonster", (r"\bmonsters?[\s-]*(?:trucks?|jam)\b", r"\bcookie[\s-]+monster\b", r"\bmonsters,?\s+inc\b")),
-    # "a dead tree" and "your goldfish is dead" stay blocked: comforting a grieving child needs the child's turn.
-    Term(r"\bdead\b", (r"\bdead[\s-]+(?:ends?|batter(?:y|ies))\b",), if_asked=(_DAY_OF_THE_DEAD,)),
+    # "a dead tree" stays blocked; "your goldfish is dead" only after the child said their goldfish died.
+    Term(r"\bdead\b", (r"\bdead[\s-]+(?:ends?|batter(?:y|ies))\b",), if_asked=(_DAY_OF_THE_DEAD,), grief=True),
     Term(r"\bmuert[oa]s?\b", if_asked=(_DAY_OF_THE_DEAD,)),     # "dead" in Spanish, as in "Día de los Muertos"
     Term(r"\bdie\b", (r"\bdie\s+(?:of\s+laughter|laughing)\b", r"\b(?:roll|rolls|rolled|rolling)\s+(?:the|a|that|your)\s+die\b")),
-    Term(r"\bdeath\b"),
+    Term(r"\bdeath\b", grief=True),
     Term(r"\bkill(?:s|ed|ing)?\b", (r"\b(?:joke|riddle|you)\s+kills?\s+me\b",)),
     Term(r"\bblood(?:y)?\b", (r"\bblood\s+oranges?\b",)),
     Term(r"\bweapon"),
@@ -342,16 +367,20 @@ BLOCK_TERMS = [
     Term(r"\bdollars?\b", (r"\bsand\s+dollars?\b", r"\b(?:toy|play|pretend)\s+dollars?\b")),
     Term(r"\bamazon\b", (r"\bamazon\s+(?:rainforest|river|jungle|parrots?)\b",)),
 ]
-_BLOCK_TERMS_RE = [(re.compile(t.word, re.IGNORECASE), _any_of(t.safe), _any_of(t.if_asked)) for t in BLOCK_TERMS]
+_BLOCK_TERMS_RE = [(re.compile(t.word, re.IGNORECASE), _any_of(t.safe), _any_of(t.if_asked), t.grief)
+                   for t in BLOCK_TERMS]
 
 
 def blocked_word(text: str, child_said: str = "") -> str | None:
     """The first blocklist word in `text` that is not inside one of its safe phrases, or None.
-    child_said: the child's words this turn; an if_asked phrase counts as safe only when they hold one too."""
-    for word_rx, safe_rx, asked_rx in _BLOCK_TERMS_RE:
+    child_said: the child's words this turn; an if_asked phrase counts as safe only when they hold one too, and a
+    grief word only next to who they said died."""
+    for word_rx, safe_rx, asked_rx, grief in _BLOCK_TERMS_RE:
         safe = [m.span() for m in safe_rx.finditer(text)] if safe_rx else []
         if asked_rx and child_said and asked_rx.search(child_said):
             safe += [m.span() for m in asked_rx.finditer(text)]
+        if grief and child_said:
+            safe += _grief_spans(text, child_said)
         for m in word_rx.finditer(text):
             if not any(a <= m.start() and m.end() <= b for a, b in safe):
                 return m.group()

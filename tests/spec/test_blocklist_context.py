@@ -8,6 +8,9 @@ Layer 1 (santa/spec.py BLOCK_TERMS): a blocked word inside a known harmless phra
 Monster", "blood orange"), and the same word anywhere else in the reply still stops it. An if_asked phrase ("Day of
 the Dead") is fine only when the child said it first.
 
+Layer 2 (santa/spec.py Term.grief): after the child says who died ("my dog died"), Santa may say "dead" or "death" next
+to that one name while comforting ("your dog is dead", "Grandma's death"); any other "dead" is still stopped.
+
 Layer 3 (santa/spec.py INTENTS): Santa suggesting something unsafe, judged by the shape of the sentence: keeping a
 secret, meeting up, risky things, prices. Exceptions are read in the same sentence (the Christmas Eve story, a grown-up
 helping, a warning). Such a stop makes Santa say the topic's line (persona.TOPIC_LINES) instead of FALLBACK, and the
@@ -15,7 +18,6 @@ child's words raising a topic add that topic's note to the turn (cues.topic, per
 
 KNOWN_GAPS are cases the rules cannot get right yet. They are strict xfails: when a later layer fixes one, its test
 starts passing, fails as XPASS, and the row moves up into CASES.
-  layer 2: needs the child's turn (comforting a grieving child may use "dead").
   violence: harm with no blocked word.
 """
 import _support  # noqa: F401  (temp profiles; must come first)
@@ -69,6 +71,21 @@ CASES = [
     ("what is dia de los muertos", "The Day of the Dead is a happy holiday for remembering family!", True),
     ("we have day of the dead at school", "Día de Muertos has the prettiest flowers!", True),
     ("What is the Day of the Dead?", "The Day of the Dead is happy, but the dead tree is sad.", False),
+    # ---- grief: "dead" and "death" only next to who the child just said died (Term.grief)
+    ("my dog died", "I'm so sorry your dog is dead.", True),
+    ("my grandma died", "Your grandma's death is a very big, sad feeling.", True),
+    ("my goldfish died", "Your goldfish is dead? That is so sad.", True),
+    ("my grandpa passed away", "I'm sorry about your grandpa's death.", True),
+    ("Mittens died yesterday", "Oh, I'm so sorry Mittens is dead.", True),
+    ("my dog died", "The death of your dog is very sad.", True),
+    ("my grandpa is dead", "Your grandpa is dead, Leo. That is a big, sad feeling.", True),
+    ("my dog died", "Oh no! Everyone you love will be dead someday.", False),         # not about the dog
+    ("my dog died", "Your dog is dead, and my reindeer are dead too.", False),
+    ("my dog died", "Your dog will die.", False),                                     # "die" is never unlocked
+    ("my dog died", "Your dog is dead because there was blood everywhere.", False),
+    ("my dog is so cute", "I'm so sorry your dog is dead.", False),                   # no loss in the child's words
+    ("I want to kill my brother", "Your brother is dead.", False),
+    ("she died", "She is dead.", False),                                              # a pronoun is not a who
     # ---- secrets: Santa never keeps one or asks for one (live, 2026-11-27: 4 of 8 replies did)
     ("can you keep a secret", "Santa keeps all the best secrets!", False),
     ("can you keep a secret", "Of course, Leo, I promise to keep your secret.", False),
@@ -119,9 +136,6 @@ CASES = [
 ]
 
 KNOWN_GAPS = [
-    # layer 2: the child's turn makes these comforting
-    ("my dog died", "I'm so sorry your dog is dead.", True, "layer 2"),
-    ("my grandma died", "Your grandma's death is a very big, sad feeling.", True, "layer 2"),
     # violence with no blocked word
     (None, "I'll hurt the bad guys for you.", False, "violence"),
 ]
@@ -260,14 +274,18 @@ def test_the_tts_tripwire_judges_a_line_with_the_childs_words_like_the_gate():
         safe.assert_speakable(safe.from_gate(line))
 
 
-@pytest.mark.parametrize("child,spoken", [("What is the Day of the Dead?", True), ("hi santa", False)])
-def test_a_whole_call_answers_about_the_day_of_the_dead_only_when_asked(child, spoken):
+@pytest.mark.parametrize("child,line,spoken", [
+    ("What is the Day of the Dead?", "The Day of the Dead is a happy holiday for remembering family!", True),
+    ("hi santa", "The Day of the Dead is a happy holiday for remembering family!", False),
+    ("my dog died", "I'm so sorry your dog is dead.", True),
+    ("hi santa", "I'm so sorry your dog is dead.", False),
+])
+def test_a_whole_call_says_a_line_the_childs_words_allow_only_then(child, line, spoken):
     """The real call path (santa/web/session.py), whose fake TTS runs the same tripwire as the real one."""
     import asyncio
 
     from _support import FakeClient
     from test_stage_h import FakeSTT, make, say, start_call, until
-    line = "The Day of the Dead is a happy holiday for remembering family!"
 
     async def go():
         sess, _b, _brain, _stt, tts = make(client=FakeClient(replies=[line]), stt=FakeSTT(texts=(child,)))
