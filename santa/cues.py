@@ -1,8 +1,13 @@
 """Conversation cues (not safety rules; those live in spec.py): small word checks on what the child just said."""
 import re
 
-GOODBYE_WORDS = re.compile(r"\b(bye|goodbye|bye-bye|good ?night|see you|have to go|got to go|gotta go|need to go|"
-                           r"i'm leaving|im leaving|going now|time to go)\b", re.I)
+# "see you" is a goodbye only as one: "see you later/soon/tomorrow", "see ya", or a bare "see you" that opens what the
+# child says ("see you Santa!", "ok, see you"). "Can I stay up and see you?" is not one (it got the goodbye's time
+# note, and Santa said "Good morning" mid-call; 2026-11-27).
+GOODBYE_WORDS = re.compile(
+    r"\b(?:bye|goodbye|bye-bye|good ?night|see you (?:later|soon|tomorrow|next time|again)|see ya|have to go|got to go"
+    r"|gotta go|need to go|i'm leaving|im leaving|going now|time to go)\b"
+    r"|(?:^|[,.!]\s*|\b(?:ok|okay|alright|well)[\s,]+)see you\b", re.I)
 
 
 def sounds_like_goodbye(text: str) -> bool:

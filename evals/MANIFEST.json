@@ -29,7 +29,7 @@
       "has_metadata": true,
       "turns": 132,
       "turns_without_usable_reply": 0,
-      "file_sha256_10": "b93714fd0f"
+      "file_sha256_10": "adc1270007"
     },
     "ai_gemma4_26b_a4b_ctx8k.json": {
       "model": "ai/gemma4:26b-a4b+ctx8k",
@@ -44,7 +44,7 @@
       "has_metadata": true,
       "turns": 132,
       "turns_without_usable_reply": 0,
-      "file_sha256_10": "b766111dc5"
+      "file_sha256_10": "8fe6fdf16d"
     },
     "ai_gemma4_e4b.json": {
       "model": "ai/gemma4:e4b",
@@ -59,7 +59,7 @@
       "has_metadata": true,
       "turns": 132,
       "turns_without_usable_reply": 0,
-      "file_sha256_10": "3d193602b4"
+      "file_sha256_10": "466620f62b"
     },
     "ai_gemma4_e4b_ctx8k.json": {
       "model": "ai/gemma4:e4b+ctx8k",
@@ -74,7 +74,7 @@
       "has_metadata": true,
       "turns": 132,
       "turns_without_usable_reply": 0,
-      "file_sha256_10": "7d3687d9bb"
+      "file_sha256_10": "bdeae50dd1"
     }
   },
   "fair_comparisons": "Compare models only within a persona group. v1 group: ai/gemma4:26b-a4b, ai/gemma4:26b-a4b+ctx8k, ai/gemma4:e4b, ai/gemma4:e4b+ctx8k."

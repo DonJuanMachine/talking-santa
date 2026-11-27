@@ -92,7 +92,10 @@ def test_time_note_on_first_turn_and_goodbyes_only():
 
 @pytest.mark.parametrize("text,yes", [("bye santa", True), ("goodbye!", True), ("I have to go now", True),
                                       ("good night santa", True), ("gotta go", True), ("see you later", True),
-                                      ("i like snow", False), ("my dog is a boy", False), ("I want to go sledding", False)])
+                                      ("i like snow", False), ("my dog is a boy", False), ("I want to go sledding", False),
+                                      ("see you Santa!", True), ("ok, see you", True), ("see ya", True),
+                                      ("can I stay up and see you", False), ("can I see you", False),
+                                      ("my mom will see you", False), ("I see you have a beard", False)])
 def test_sounds_like_goodbye(text, yes):
     assert cues.sounds_like_goodbye(text) is yes
 
