@@ -62,6 +62,7 @@ Every setting Santa reads, with its default. The defaults below are the values i
 | `SANTA_GIFT_ASK` | `1` (on) | The gift question. Off when `SANTA_ARC` is on. |
 | `SANTA_GIFT_ASK_TURN` | `5` | The child's turn number that first gets the gift question. Never the conversation guide's hello turn: set to `1`, the question comes on the 2nd turn. |
 | `SANTA_GENTLE` | `1` (on) | Gentle mode after a sad or scared turn. |
+| `SANTA_TOPIC_NOTES` | `1` (on) | When a child talks about meeting Santa, Christmas Eve, a secret, being hurt or hurting someone, something risky or money, tell Santa how to answer on that turn. The rules that stop Santa from suggesting these, and his fixed line for each, stay on either way. |
 | `SANTA_GUIDE` | `1` (on) | Conversation guide: hello and "how are you" on a child's first turn (registered or guest; a welcome back if a registered child called before), then one question about what they like; a yes with no conditions when any child asks about the nice list. Hello and likes are off when `SANTA_ARC` is on. |
 | `SANTA_SONGS` | `1` (on) | Santa says a carol's first verse when asked, from fixed text. |
 | `SANTA_HO_ONCE` | `1` (on) | "Ho ho ho" once when answering, then only for a child's song or joke. |

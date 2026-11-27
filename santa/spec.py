@@ -17,6 +17,7 @@ Sentences are found in two steps, both streaming-safe (see split_raw):
      the punctuation).
 So the same sentences come out whether the reply arrives whole or in chunks.
 """
+import dataclasses
 import functools
 import re
 
@@ -172,16 +173,266 @@ SAFETY_RULES = [
                      r"\b(?:i am|i['’]m)\s+(?:an?\s+)?(?:ai|robot|computer|chatbot|language model|artificial)\b",
                      r"\b(?:i am|i['’]m)\s+(?:just|only)\s+an?\s+(?:computer|program|machine|robot)\b",
                      _BRAND_CLAIM]),
-    # "monster truck(s)" and "Monster Jam" (the truck show) are toys, not monsters (2026-11-25: a child who likes them
-    # got FALLBACK on every reply).
-    ("blocklist", [r"\bkill(?:s|ed|ing)?\b", r"\bdead\b(?!-end)", r"\bdie\b(?!\s+(?:of\s+laughter|laughing))",
-                   r"\bdeath\b", r"\bblood(?:y)?\b", r"\bguns?\b", r"\bweapon", r"\bmonster(?!s?[\s-]*(?:trucks?|jam)\b)",
-                   r"\bcoal\b",
-                   r"\bdollars?\b", r"\bamazon\b"]),
 ]
 _SAFETY_RE = [(name, re.compile("|".join(pats), re.IGNORECASE)) for name, pats in SAFETY_RULES]
-# Every blocklist-type pattern in one regex (old callers: safety._BLOCK_RE).
-BLOCK_RE = re.compile("|".join(p for _, pats in SAFETY_RULES for p in pats), re.IGNORECASE)
+
+
+def _any_of(pats: tuple[str, ...]) -> "re.Pattern | None":
+    return re.compile("|".join(pats), re.IGNORECASE) if pats else None
+
+
+# Intent rules: Santa suggesting something unsafe, judged by the shape of the sentence, not by one word. Each has
+# exceptions ("unless") read in the SAME sentence only: "I'll come to your house on Christmas Eve" is the Santa story,
+# "I'll come to your party" is a meeting. When one stops a reply, Santa says that topic's line (persona.TOPIC_LINES)
+# instead of FALLBACK. Live baseline: tools/probes/topics_probe.py. Cases: tests/spec/test_blocklist_context.py.
+@dataclasses.dataclass(frozen=True)
+class Intent:
+    name: str                     # the safety reason ("secret", "meeting", "danger", "price")
+    shapes: tuple[str, ...]       # what Santa must not say (regexes)
+    unless: tuple[str, ...] = ()  # fine after all when the same sentence holds one of these (regexes)
+
+
+_SANTA_WILL = (r"\b(?:i['’]ll|i\s+will|i\s+can|i\s+could|i\s+am\s+going\s+to|i['’]m\s+going\s+to|i['’]m\s+gonna"
+               r"|santa\s+will|santa['’]ll|santa\s+can|we['’]ll|we\s+will|we\s+can)")
+_GROWN_UP = (r"\b(?:grown-?ups?|adults?|mommy|mom|mama|mum|daddy|dad|papa|parents?|grandma|grandpa|granny|nana"
+             r"|teachers?|babysitter)\b")
+_NEGATION = r"\b(?:never|don['’]?t|do\s+not|not|no|can['’]t|cannot|shouldn['’]t|mustn['’]t)\b"
+_HARM = r"(?:hurt|hit|punch|kick|beat\s+up|smack|slap|bite|shoot|stab|attack|choke|strangle|stomp\s+on)"
+_TARGET = (r"(?:him|her|them|you|me|us|people|someone|somebody|anyone|anybody|everyone|everybody"
+           r"|(?:your|my|his|her|their|the|that|those|this|a)\s+(?:\w+\s+)?(?:brothers?|sisters?|baby|babies|friends?"
+           r"|mom|mommy|dad|daddy|teachers?|dogs?|cats?|pupp(?:y|ies)|kitt(?:y|ies|ens?)|bull(?:y|ies)|guys?|boys?"
+           r"|girls?|kids?|people|person|man|men|lady|ladies|neighbou?rs?|classmates?|cousins?))\b")
+
+INTENTS = [
+    # Santa promising to keep a secret, or asking the child to keep one from their grown-ups. A secret that is only a
+    # word ("The elves' toys are a secret!", "A secret? How exciting!") is fine.
+    Intent("secret", (
+        r"\bour\s+(?:little\s+|special\s+|big\s+|own\s+)?secrets?\b",
+        r"\bjust\s+between\s+(?:us|you\s+and\s+me|me\s+and\s+you|the\s+two\s+of\s+us)\b",
+        r"\b(?:don['’]?t|do\s+not)\s+tell\s+(?:your\s+|my\s+|the\s+)?(?:mom|mommy|mama|mum|dad|daddy|papa|parents?"
+        r"|grown-?ups?|anyone|anybody|teachers?|grandma|grandpa|family|them|her|him)\b",
+        r"\b(?:i|santa|we)\s+(?:won['’]t|will\s+not|wouldn['’]t|would\s+never|will\s+never|never)\s+tell\s+"
+        r"(?:anyone|anybody|a\s+soul|your\s+\w+|mom|mommy|dad|daddy|them|her|him)\b",
+        r"\b(?:i|santa|we)\s+(?:won['’]t|will\s+not|wouldn['’]t)\s+tell\s*(?:[,.!…]|$)",
+        r"\b(?:i|santa|we)(?:['’]ll|\s+will|\s+can|\s+always|\s+promise\s+to)?\s+keeps?\s+(?:it|this|that|your|a|all"
+        r"|the|any)\b[^.!?]{0,30}?\bsecrets?\b",
+        r"(?:^|(?<=[.!?…]\s)|\blet['’]s\s+|\byou\s+(?:should|must|can|have\s+to|need\s+to)\s+|\bcan\s+you\s+)"
+        r"keep\s+(?:it|this|that)\s+(?:a\s+|our\s+)?secret\b",
+        r"\bpromise\s+(?:me\s+)?(?:not\s+to|you\s+won['’]t|you\s+will\s+not|to\s+never)\s+tell\b",
+        r"\b(?:can|will)\s+you\s+keep\s+(?:a|this|my|our)\s+secret\b",
+    ), unless=(r"\byour\s+(?:address|phone|number|password|last\s+name|full\s+name)\b", r"\bstrangers?\b")),
+    # Santa coming to a real place: only the Christmas Eve story (after the child is asleep) is fine.
+    Intent("meeting", (
+        _SANTA_WILL + r"\s+(?:come|visit|stop\s+by|drop\s+by|swing\s+by|pop\s+by|fly)\s+(?:over\s+|down\s+|by\s+)?"
+        r"(?:to\s+|at\s+)?(?:you\b|your\b|see\s+you\b|play\b|and\s+(?:see|play)\b)",
+    ), unless=(r"\bchristmas\s+eve\b", r"\basleep\b", r"\bsleep(?:ing|s)?\b", r"\bin\s+bed\b", r"\bblink\b",
+               r"\bchimney\b")),
+    # The child seeing or meeting Santa, getting together, being alone, or where the child is. Never fine.
+    Intent("meeting", (
+        r"(?<!\bto\s)\bmeet\s+(?:me|up)\b",                     # "Meet me at the park"; not "you want to meet me"
+        r"\blet['’]s\s+(?:meet|get\s+together|play\s+together|see\s+each\s+other)\b",
+        r"\bwe\s+(?:can|could|should|will)\s+(?:meet|get\s+together|play\s+together|see\s+each\s+other)\b",
+        r"\bcome\s+(?:and\s+)?(?:find|meet|visit)\s+me\b",
+        r"\byou(?:['’]ll|\s+will|\s+can|\s+could|\s+might|\s+may)\s+(?:get\s+to\s+)?(?:see|meet|catch|spot)\s+"
+        r"(?:me|santa)\b",
+        r"\b(?:i['’]ll|i\s+will|we['’]ll|we\s+will)\s+see\s+(?:you|each\s+other)\s+(?:at|on|in|tomorrow|tonight|there"
+        r"|then)\b",
+        r"\b(?:stay|wait)\s+up\s+(?:late\s+)?(?:and|to)\s+(?:see|watch|meet|catch|spot)\b",
+        r"\bwait\s+up\s+for\s+(?:me|santa)\b",
+        r"\bjust\s+(?:you\s+and\s+me|the\s+two\s+of\s+us)\b",
+        r"\bare\s+you\s+(?:all\s+)?(?:alone|by\s+yourself|home\s+alone)\b",
+        r"\bis\s+any(?:one|body)\s+(?:else\s+)?(?:home|there|with\s+you)\b",
+        r"\bwhere\s+(?:do\s+you\s+live|is\s+your\s+(?:house|home|school))\b",
+        r"\bwhat\s+(?:school|street|town|city)\s+(?:do|are)\s+you\b",
+        r"\bwhat(?:['’]s|\s+is)\s+your\s+(?:address|school|street)\b",
+    )),
+    # Santa offering to hurt someone, or telling the child to hurt someone or hit back. Only a person or an animal as
+    # the target ("kick the ball" and "hit the piñata" are fine), and only Santa or the child as the one who does it
+    # ("Spider-Man fights the bad guys" is fine). A warning ("You should never hit your sister"), pretend play and
+    # snowball fights are fine. Live (2026-11-27): the model never did this in 20 replies; this is the backstop.
+    Intent("violence", (
+        r"(?:" + _SANTA_WILL + r"|\b(?:my|the)\s+(?:elves|reindeer)(?:\s+(?:will|can|could)|['’]ll)"
+        r"|\brudolph(?:\s+(?:will|can|could)|['’]ll))(?:\s+(?!never\b|not\b)\w+)?\s+" + _HARM + r"\s+" + _TARGET,
+        r"(?:^|(?<=[.!?…]\s)|\blet['’]s\s+|\byou\s+(?:can|could|should|must|need\s+to|have\s+to|might|may)\s+"
+        r"(?:just\s+)?|\bgo\s+(?:and\s+)?|\bjust\s+|\btry\s+to\s+)" + _HARM + r"\s+" + _TARGET,
+    ), unless=(r"\b(?:pretend\w*|play(?:ing)?|games?|snowballs?|pillows?|tickl\w*|tag)\b",)),
+    # Santa telling the child to do something that can hurt. Fine with a grown-up, as a warning ("Never light
+    # matches!"), or about the North Pole ("Mrs. Claus lights the candles").
+    Intent("danger", (
+        r"\b(?:light|lighting|strike|striking)\s+(?:a\s+|the\s+|some\s+|your\s+)?(?:match(?:es)?|candles?|fires?"
+        r"|lighters?|fireworks?|sparklers?)\b",
+        r"\bplay(?:ing)?\s+with\s+(?:the\s+|a\s+|some\s+)?(?:matches|fire|lighters?|knives|knife)\b",
+        r"\b(?:turn|turning|switch|switching)\s+on\s+the\s+(?:stove|oven|burners?|fireplace|gas)\b",
+        r"\btouch(?:ing)?\s+the\s+(?:stove|oven|fire|outlets?|plugs?|heater)\b",
+        r"\b(?:use|using|grab|grabbing|get|take|hold|holding)\s+(?:a\s+|the\s+|your\s+|some\s+)?(?:sharp\s+|big\s+)?"
+        r"(?:knife|knives|lighters?|matches)\b",
+        r"\b(?:take|taking|eat|eating|swallow|swallowing)\s+(?:some\s+|the\s+|a\s+|your\s+)?(?:medicine|pills?"
+        r"|vitamins?)\b",
+        r"\bclimb(?:ing|s)?\s+(?:up\s+)?(?:on\s+)?(?:the\s+|a\s+|that\s+)?(?:big\s+|tall\s+)?(?:tree|roof|fence"
+        r"|counter|shelf|shelves|bookcase|ladder|cabinet|window)\b",
+        r"\b(?:go|going|walk|walking|play|playing)\s+(?:out|outside|to\s+the\s+park|in\s+the\s+street)\s+(?:all\s+)?"
+        r"(?:by\s+yourself|alone|on\s+your\s+own)\b",
+        r"\bopen\s+the\s+(?:front\s+)?door\b",
+        r"\bcross\s+the\s+(?:street|road)\b",
+    ), unless=(_GROWN_UP, _NEGATION, r"\b(?:claus|elves|elf|reindeer|rudolph)\b")),
+    # Prices, money amounts, buying and stores (persona: "Never mention prices, brands, or stores"). Brands are not
+    # here: "Lego" and "Barbie" are gifts children ask for by name.
+    # A price word in a negated sentence is Santa deflecting: "I don't talk about prices", "made with love, not with
+    # prices!" (live, 2026-11-27: both were stopped). An amount in it is still caught below.
+    Intent("price", (
+        r"\bcosts?\b(?!\s+(?:nothing|no\s+money))",
+        r"\bprices?\b|\bpriced\b|\bexpensive\b|\bcheap\b|\bon\s+sale\b|\bafford\b",
+    ), unless=(_NEGATION,)),
+    # Amounts, buying and stores: never fine, refusal or not ("I don't talk about prices, but it's $500").
+    Intent("price", (
+        r"\$\s*\d",
+        r"\b\d[\d,.]*\s*(?:dollars?|bucks|cents)\b",
+        r"\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fifty"
+        r"|sixty|seventy|eighty|ninety|hundred|thousand|million)\s+(?:dollars?|bucks|cents)\b",
+        r"\b(?:you|mommy|mom|daddy|dad|your\s+(?:grown-?ups?|parents?|family)|we|they|grown-?ups?)"
+        r"(?:\s+(?:can|could|should|might|will)|['’]ll)\s+buy\b",
+        r"\bask\s+(?:your\s+)?\w+\s+to\s+buy\b",
+        r"\bgo\s+(?:and\s+)?buy\b",
+        r"\bbuy\s+(?:it|one|them|that|this|some)\s+(?:at|from|on|online)\b",
+        r"\b(?:walmart|costco|best\s+buy|ebay|etsy|kmart|target\.com|toys\s*['’\"]?\s*r\s*['’\"]?\s*us|the\s+mall"
+        r"|toy\s+store|the\s+store)\b",
+        r"\b(?:at|from|to)\s+target\b",
+    )),
+]
+_INTENTS_RE = [(i.name, re.compile("|".join(i.shapes), re.IGNORECASE), _any_of(i.unless)) for i in INTENTS]
+# A sentence ends at . ! ? … but not after Mr. Mrs. Ms. Dr. St. (as split_raw).
+_SENT_END_RX = re.compile(r"(?<!\bMrs)(?<!\bMr)(?<!\bMs)(?<!\bDr)(?<!\bSt)[.!?…]", re.IGNORECASE)
+
+
+def _sentence_at(text: str, start: int, end: int) -> str:
+    """The sentence of `text` that holds text[start:end]."""
+    begin = 0
+    for m in _SENT_END_RX.finditer(text, 0, start):
+        begin = m.end()
+    m = _SENT_END_RX.search(text, end)
+    return text[begin:m.end() if m else len(text)]
+
+
+def intent_reason(text: str) -> str | None:
+    """The first intent rule `text` breaks ("secret" | "meeting" | "danger" | "price"), or None."""
+    for name, rx, unless in _INTENTS_RE:
+        for m in rx.finditer(text):
+            if unless is None or not unless.search(_sentence_at(text, m.start(), m.end())):
+                return name
+    return None
+
+
+# The "blocklist" rule: words Santa never says (violence, death, fear, money, a store), each with the harmless
+# things that only share the word ("gun" in "water gun", "monster" in "monster truck"). A word is blocked unless
+# every place it appears lies inside one of its safe phrases, so "A water gun is fun, but a real gun is not" is
+# still blocked. A safe phrase names a harmless thing (a toy, a food, a place, an idiom). An if_asked phrase is
+# fine only when the child's words this turn hold it too: Santa never brings it up, but answers when asked. A grief
+# word is fine only next to who the child just said died: "my dog died" lets Santa say "your dog is dead", never
+# "everyone will be dead someday". Cases: tests/spec/test_blocklist_context.py.
+@dataclasses.dataclass(frozen=True)
+class Term:
+    word: str                      # the blocked word (a regex)
+    safe: tuple[str, ...] = ()     # phrases that contain the word and are always fine to say (regexes)
+    if_asked: tuple[str, ...] = ()   # phrases fine only when the child said one of them this turn (regexes)
+    grief: bool = False            # fine next to who the child said died this turn (_grief_spans)
+
+
+# Who the child says died: "my dog died" -> "dog", "Mittens passed away" -> "Mittens", "my grandpa is dead" ->
+# "grandpa". A pronoun is not a who ("she died": Santa may say "died", which is never blocked).
+_LOSS_RX = re.compile(r"\b([^\W\d_][\w'’-]*)\s+(?:has\s+)?(?:died|passed\s+away|(?:is|was)\s+dead|(?:got|was)\s+killed"
+                      r"|went\s+to\s+heaven|is\s+in\s+heaven)\b", re.IGNORECASE)
+_NOT_WHO = {"he", "she", "it", "they", "who", "that", "this", "one", "someone", "somebody", "everyone", "everybody"}
+
+
+@functools.lru_cache(maxsize=64)
+def _grief_rx(who: str) -> "re.Pattern":
+    """Santa's words about that one loss: "your dog is dead", "Grandma's death", "the death of your goldfish"."""
+    w = re.escape(who)
+    return re.compile(rf"\b{w}\s+(?:is|was)\s+(?:\w+\s+)?dead\b|\b{w}['’]s\s+death\b"
+                      rf"|\bdeath\s+of\s+(?:your\s+|my\s+|our\s+|the\s+)?(?:\w+\s+)?{w}\b", re.IGNORECASE)
+
+
+_MY_BEFORE = re.compile(r"\b(?:my|our)\s+(?:[\w'’-]+\s+)?$", re.IGNORECASE)
+
+
+def loss_of(child_said) -> tuple[str, str] | None:
+    """(the child's words about the loss, who in Santa's words) for the first loss in `child_said`, else None:
+    "my dog died" -> ("my dog died", "your dog"); "Mittens passed away" -> ("Mittens passed away", "Mittens").
+    For the grief note (persona.grief_note); the same reading as the grief words above."""
+    text = str(child_said or "")
+    for m in _LOSS_RX.finditer(text):
+        who = m.group(1)
+        if who.lower() in _NOT_WHO:
+            continue
+        my = _MY_BEFORE.search(text[max(0, m.start() - 40):m.start()])
+        if my is None:
+            return text[m.start():m.end()], who
+        your = re.sub(r"^(?:my|our)\b", "your", my.group(), flags=re.IGNORECASE)   # "my grandma's " -> "your grandma's "
+        return text[m.start() - len(my.group()):m.end()], your + who
+    return None
+
+
+def _grief_spans(text: str, child_said: str) -> list[tuple[int, int]]:
+    spans = []
+    for m in _LOSS_RX.finditer(child_said):
+        if m.group(1).lower() not in _NOT_WHO:
+            spans += [x.span() for x in _grief_rx(m.group(1).lower()).finditer(text)]
+    return spans
+
+
+# Either name of the holiday: the child may ask with one and Santa answer with the other.
+_DAY_OF_THE_DEAD = r"\bday\s+of\s+the\s+dead\b|\bd[ií]a\s+de\s+(?:los\s+)?muertos\b"
+
+BLOCK_TERMS = [
+    # Named water/foam/craft toys only. A bare "toy gun" stays blocked (it can be a replica).
+    Term(r"\bguns?\b", (r"\b(?:water|squirt|nerf|bubble|foam|glue)[\s-]+guns?\b",)),
+    # "monster truck(s)" and "Monster Jam" (the truck show) are toys, not monsters (2026-11-25: a child who likes
+    # them got FALLBACK on every reply).
+    Term(r"\bmonster", (r"\bmonsters?[\s-]*(?:trucks?|jam)\b", r"\bcookie[\s-]+monster\b", r"\bmonsters,?\s+inc\b")),
+    # "a dead tree" stays blocked; "your goldfish is dead" only after the child said their goldfish died.
+    Term(r"\bdead\b", (r"\bdead[\s-]+(?:ends?|batter(?:y|ies))\b",), if_asked=(_DAY_OF_THE_DEAD,), grief=True),
+    Term(r"\bmuert[oa]s?\b", if_asked=(_DAY_OF_THE_DEAD,)),     # "dead" in Spanish, as in "Día de los Muertos"
+    Term(r"\bdie\b", (r"\bdie\s+(?:of\s+laughter|laughing)\b", r"\b(?:roll|rolls|rolled|rolling)\s+(?:the|a|that|your)\s+die\b")),
+    Term(r"\bdeath\b", grief=True),
+    Term(r"\bkill(?:s|ed|ing)?\b", (r"\b(?:joke|riddle|you)\s+kills?\s+me\b",)),
+    Term(r"\bblood(?:y)?\b", (r"\bblood\s+oranges?\b",)),
+    Term(r"\bweapon"),
+    # "a lump of coal" is a naughty-list threat; a toy train's coal car is not.
+    Term(r"\bcoal\b", (r"\bcoal\s+(?:cars?|tenders?|wagons?)\b",)),
+    Term(r"\bdollars?\b", (r"\bsand\s+dollars?\b", r"\b(?:toy|play|pretend)\s+dollars?\b")),
+    Term(r"\bamazon\b", (r"\bamazon\s+(?:rainforest|river|jungle|parrots?)\b",)),
+]
+_BLOCK_TERMS_RE = [(re.compile(t.word, re.IGNORECASE), _any_of(t.safe), _any_of(t.if_asked), t.grief)
+                   for t in BLOCK_TERMS]
+
+
+def blocked_word(text: str, child_said: str = "") -> str | None:
+    """The first blocklist word in `text` that is not inside one of its safe phrases, or None.
+    child_said: the child's words this turn; an if_asked phrase counts as safe only when they hold one too, and a
+    grief word only next to who they said died."""
+    for word_rx, safe_rx, asked_rx, grief in _BLOCK_TERMS_RE:
+        safe = [m.span() for m in safe_rx.finditer(text)] if safe_rx else []
+        if asked_rx and child_said and asked_rx.search(child_said):
+            safe += [m.span() for m in asked_rx.finditer(text)]
+        if grief and child_said:
+            safe += _grief_spans(text, child_said)
+        for m in word_rx.finditer(text):
+            if not any(a <= m.start() and m.end() <= b for a, b in safe):
+                return m.group()
+    return None
+
+
+class _AnyRule:
+    """BLOCK_RE for old callers (safety._BLOCK_RE, tools): .search(text) is truthy when any regex SAFETY rule, an intent
+    rule or a blocklist word hits. Truthiness is the whole contract; the value is a Match, a reason or the word."""
+
+    _RULES = re.compile("|".join(p for _, pats in SAFETY_RULES for p in pats), re.IGNORECASE)
+
+    def search(self, text: str):
+        return self._RULES.search(text) or intent_reason(text) or blocked_word(text)
+
+
+BLOCK_RE = _AnyRule()
 
 # ----------------------------------------------------------------- private details (input, facts and output)
 _NUMWORDS = ("zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen "
@@ -294,10 +545,17 @@ def looks_private_fact(text: str) -> bool:
     return looks_private(text) or bool(_LASTNAME_RE.search(text))
 
 
-def safety_reason(text: str, names=(), gift_turn: bool = False) -> str | None:
-    """Why `text` must not be spoken: "naughty_list" | "promise" | "ai_identity" | "blocklist" | "private" | None.
+def safety_reason(text: str, names=(), gift_turn: bool = False, child_said: str = "") -> str | None:
+    """Why `text` must not be spoken: "secret" | "meeting" | "danger" | "price" | "naughty_list" | "promise" |
+    "ai_identity" | "blocklist" | "private" | None.
     names: the active child's name and nicknames (P1-3: "I'll bring Emma a bike!" is a promise like "you").
-    gift_turn: the child just asked for a gift (speech.is_gift_turn), so the pronoun rules apply too (P1-3 part B)."""
+    gift_turn: the child just asked for a gift (speech.is_gift_turn), so the pronoun rules apply too (P1-3 part B).
+    child_said: the child's words this turn; a blocklist if_asked phrase ("Day of the Dead") is fine only when the
+    child said it first. The only argument that can make a line pass that would fail without it.
+    The intent rules come first, so "I promise to keep your secret" is a "secret" (and gets that topic's line)."""
+    intent = intent_reason(text)
+    if intent is not None:
+        return intent
     for name, rx in _SAFETY_RE:
         if rx.search(text):
             return name
@@ -307,6 +565,8 @@ def safety_reason(text: str, names=(), gift_turn: bool = False) -> str | None:
                 return name
         if name == "promise" and gift_turn and gift_turn_promise(text):
             return name
+    if blocked_word(text, child_said) is not None:
+        return "blocklist"
     return "private" if looks_private(text) else None
 
 

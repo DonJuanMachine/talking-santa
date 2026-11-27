@@ -422,10 +422,11 @@ def is_failed(t: dict) -> bool:
 
 
 def is_filtered(t: dict) -> bool:
-    """The model said something, but the child hears the fallback instead."""
+    """The model said something, but the child hears the fallback (or a topic line: brain._stop_line) instead."""
     if is_failed(t):
         return False
-    return bool(t.get("error_reason")) or t.get("answer") in (safety.FALLBACK, OLD_FALLBACK)
+    return bool(t.get("error_reason")) or t.get("answer") in (safety.FALLBACK, OLD_FALLBACK,
+                                                               *persona.TOPIC_LINES.values())
 
 
 def answer_hash(t: dict) -> str:

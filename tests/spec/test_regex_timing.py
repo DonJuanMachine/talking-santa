@@ -19,10 +19,13 @@ PREFIXES = [
     "I will bring ", "I'll bring you ", "You will get ", "I will tell my elves to make ", "Santa is bringing ",
     "My elves are making ", "I'll be sure to bring ", "There will be ", "Emma will get ", "I promise ",
     "You can have ", "You're getting ", "Santa promises ", "I am ", "My name is ", "Your ",
+    "Santa will keep ", "Don't tell ", "I'll come to ", "Ask your ", "Light the ", "You'll see ",   # spec.INTENTS
+    "I'll hurt ", "You should hit ", "My elves will kick ",
 ]
 UNITS = ["a-", "a'", "a’", "a ", "a,", "a.", "a/", "a- "]
 TAILS = ["x", "toy"]
-KWARGS = [{}, {"names": ("Emma",), "gift_turn": True}]
+KWARGS = [{}, {"names": ("Emma",), "gift_turn": True},
+          {"child_said": "my " + "a-" * N + "dog died " + "a " * N + "Mittens passed away"}]   # Term.grief
 
 
 def _shapes(n):
@@ -34,7 +37,7 @@ def _shapes(n):
         yield p + "a-a" + "-a" * n + "-toy"                   # the gift word comes after the last joiner
 
 
-@pytest.mark.parametrize("kw", KWARGS, ids=["plain", "name+gift_turn"])
+@pytest.mark.parametrize("kw", KWARGS, ids=["plain", "name+gift_turn", "grief"])
 def test_repeated_units_after_every_phrase_finish_fast(kw):
     texts = list(_shapes(N))
     times = timed([("safety_reason", text, kw) for text in texts])

@@ -298,3 +298,37 @@ def test_gentle_off_switch_and_never_in_history(monkeypatch):
     assert all(GENTLE_MARK not in h["content"] for h in s.history)
     monkeypatch.setenv("SANTA_GENTLE", "0")
     assert GENTLE_MARK not in say(santa(), "Emma", "my dog died")
+
+
+# ------------------------------------------------------------------------------------------------- grief note
+GRIEF_MARK = "Say you are so sorry"
+
+
+@pytest.mark.parametrize("child,who", [
+    ("my dog died", "your dog"), ("my grandma died yesterday", "your grandma"), ("Mittens passed away", "Mittens"),
+    ("my grandma's dog died", "your grandma's dog"), ("our cat is dead", "your cat"),
+])
+def test_grief_note_names_who_the_child_lost(child, who):
+    t = say(santa(), "Emma", child)
+    assert GRIEF_MARK in t and f"I'm so sorry about {who}." in t
+    assert "Never say where they are now" in t and "never say they will come back" in t
+    assert GENTLE_MARK in t                                   # gentle mode as well (the note follows GENTLE_SAD)
+
+
+@pytest.mark.parametrize("child", ["she died", "i like snow", "my dog is so cute", "i'm sad today"])
+def test_no_grief_note_without_who_died(child):
+    assert GRIEF_MARK not in say(santa(), "Emma", child)
+
+
+def test_grief_note_this_turn_only_off_with_gentle_and_never_in_history(monkeypatch):
+    s = santa()
+    assert GRIEF_MARK in say(s, "Emma", "my dog died")
+    assert GRIEF_MARK not in say(s, "Emma", "he was brown")    # gentle continues, the grief note does not
+    assert all(GRIEF_MARK not in h["content"] for h in s.history)
+    monkeypatch.setenv("SANTA_GENTLE", "0")
+    assert GRIEF_MARK not in say(santa(), "Emma", "my dog died")
+
+
+def test_grief_note_keeps_the_childs_words_on_one_line_without_quotes():
+    note = persona.grief_note("Emma", 'my "dog"\ndied', "your dog")
+    assert "\n(" == note[:2] and "\n" not in note[2:] and 'my \'dog\' died' in note

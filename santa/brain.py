@@ -36,10 +36,11 @@ def _now() -> float:
 
 @dataclass
 class Reply:
-    """One turn. text = what the child hears (FALLBACK when nothing could be spoken).
-    spoken: the gate's sentences the child heard, in order (never FALLBACK).
-    safety_tail: a SAFETY rule stopped the reply after `spoken`, so FALLBACK was said after them (P1-2); then
-      text = spoken + FALLBACK.
+    """One turn. text = what the child hears (FALLBACK when nothing could be spoken, or the topic's line when an
+    intent rule stopped the reply: brain._stop_line).
+    spoken: the gate's sentences the child heard, in order (never FALLBACK or a topic line).
+    safety_tail: a SAFETY rule stopped the reply after `spoken`, so FALLBACK (or the topic line) was said after them
+      (P1-2); then text = spoken + that line.
     reason: None for a complete normal reply; otherwise why speech stopped early or fell back:
       "model_error" | "empty_stream" | "nothing_left_after_filter" | "blocklist:<rule>" | "private_output" | "too_long"
     error: the model/transport error message, if any. shape: spec.shape_flags(raw) (measured, not enforced)."""
@@ -73,6 +74,12 @@ def _safety_stop(gate: speech.Gate) -> bool:
     """The gate stopped on a SAFETY rule (a spec.safety_reason hit). Not the length cap (reason None) and not a first
     sentence over MAX_WORDS ("too_long"): those are limits, not safety stops (P1-2)."""
     return gate.stopped and gate.reason not in (None, "too_long")
+
+
+def _stop_line(gate: speech.Gate) -> str:
+    """What Santa says after a SAFETY stop, or when nothing could be spoken: the topic's line when an intent rule
+    stopped the reply ("meeting", "secret", "danger", "price": persona.TOPIC_LINES), else FALLBACK."""
+    return persona.TOPIC_LINES.get(gate.reason or "", safety.FALLBACK)
 
 
 _LEGACY_WHY = {"empty": "nothing_left_after_filter", "blocklist": "blocklist", "private_output": "private_output",
@@ -121,6 +128,10 @@ class Santa:
         # Gentle mode: after a sad turn, Santa stays soft for a few turns (SANTA_GENTLE=0 turns it off).
         self.gentle_on = os.getenv("SANTA_GENTLE", "1").strip() != "0"
         self._gentle: dict[str, int] = {}   # child key -> gentle turns left
+        # Topic notes: when the child talks about meeting Santa, a secret, something risky or money, that turn's note
+        # says how to answer (persona.TOPIC_NOTES; SANTA_TOPIC_NOTES=0 turns them off). The spec.INTENTS rules on
+        # Santa's side and the topic lines stay on either way.
+        self.topics_on = os.getenv("SANTA_TOPIC_NOTES", "1").strip() != "0"
         # End-of-call memory: what each registered child said this call (their own words, nothing private), so
         # end_call() can save one "Last call: ..." fact. SANTA_CALL_SUMMARY=0 turns it off.
         self.summary_on = os.getenv("SANTA_CALL_SUMMARY", "1").strip() != "0"
@@ -224,10 +235,14 @@ class Santa:
             key, sad = self._gift_key(speaker), cues.sounds_sad(text)
             if sad or self._gentle.get(self._child_key(key), 0) > 0:
                 note += persona.gentle_note(key or gifts.GUEST, sad)
+            if (loss := spec.loss_of(text)) is not None:      # "my dog died": say sorry and name who (GRIEF_NOTE)
+                note += persona.grief_note(key or gifts.GUEST, *loss)
         if self.gifts is not None and kind != guide.HELLO:   # the hello says "ask nothing else": the gift question waits
             note += self.gifts.note(self._gift_key(speaker), text)
         if self.nice_on and cues.talks_nice_list(text):
             note += persona.nice_note(self._gift_key(speaker) or gifts.GUEST)
+        if self.topics_on and (topic := cues.topic(text)) is not None:
+            note += persona.topic_note(topic, self._gift_key(speaker) or gifts.GUEST)
         start = self._window_start()
         messages = ([{"role": "system", "content": self.system_prompt()}] + self.history[start:]
                     + [{"role": "user", "content": label + note}])
@@ -370,7 +385,7 @@ class Santa:
                                 yield out
                     if said and not tail and _safety_stop(gate):
                         tail = True       # said now, not when the model finishes: no added wait
-                        yield safety.FALLBACK
+                        yield _stop_line(gate)
                 self.last_ok_time = _now()  # the model answered (a later filter fallback is not a model problem)
             except GeneratorExit:
                 raise
@@ -395,7 +410,7 @@ class Santa:
                             yield out
                 if said and not tail and _safety_stop(gate):
                     tail = True
-                    yield safety.FALLBACK
+                    yield _stop_line(gate)
             if not legacy:
                 for out in gate.finish():
                     first_sentence = first_sentence or time.perf_counter() - t0
@@ -403,7 +418,7 @@ class Santa:
                     yield out
             if not said:
                 first_sentence = time.perf_counter() - t0
-                yield safety.FALLBACK
+                yield _stop_line(gate)
         finally:
             raw = "".join(parts)
             spoken = list(said)
@@ -415,7 +430,8 @@ class Santa:
                 reason = None if spoken else _LEGACY_WHY.get(safety.sanitize_ex(raw)[1], "nothing_left_after_filter")
             else:
                 reason = _reason_code(gate.reason) or (None if spoken else "nothing_left_after_filter")
-            answer = " ".join(spoken + [safety.FALLBACK] if tail else spoken) if spoken else safety.FALLBACK
+            stop = _stop_line(gate)
+            answer = " ".join(spoken + [stop] if tail else spoken) if spoken else stop
             rep = Reply(text=answer, raw=raw, spoken=spoken, safety_tail=tail, reason=reason, error=error,
                         shape=spec.shape_flags(raw), ttft=first or 0.0, first_sentence_s=first_sentence or 0.0,
                         total=time.perf_counter() - t0)

@@ -70,13 +70,14 @@ class Gate:
     """The prefix filter as a state machine: push() each cleaned sentence, then finish().
     Both return the sentences that may be spoken now. After a stop, everything else is ignored.
 
-    reason: None, or why speech stopped early: "naughty_list" | "promise" | "ai_identity" | "blocklist" | "private"
-    (a SAFETY hit) or "too_long". Reaching the normal cap is not a reason."""
+    reason: None, or why speech stopped early: "secret" | "meeting" | "danger" | "price" | "naughty_list" | "promise" |
+    "ai_identity" | "blocklist" | "private" (a SAFETY hit) or "too_long". Reaching the normal cap is not a reason."""
 
     def __init__(self, allow_ho: bool = True, names=(), child_turn=None):
         self.allow_ho = allow_ho       # False: "Ho ho (ho)" is removed (Santa already laughed when he answered)
         self.names = tuple(names or ())   # the active child's name + nicknames: "I'll bring Emma a bike!" (P1-3)
         self.gift_turn = is_gift_turn(child_turn)   # the child's words asked for a gift (P1-3 part B)
+        self.child_said = str(child_turn or "")      # lets Santa answer about a topic he never raises ("Day of the Dead")
         self.spoken: list[str] = []
         self.held: list[str] = []      # teasers / number sentences / gift-turn affirmatives waiting for the next one
         self.words = 0
@@ -95,7 +96,8 @@ class Gate:
         if self.stopped or not sentence.strip() or spec.is_bare_action(sentence):
             return []
         pending = self.spoken + self.held
-        hit = spec.safety_reason(" ".join(pending + [sentence]), names=self.names, gift_turn=self.gift_turn)
+        hit = spec.safety_reason(" ".join(pending + [sentence]), names=self.names, gift_turn=self.gift_turn,
+                                 child_said=self.child_said)
         if hit:
             self.held = []    # held sentences may be part of the hit (a number split over sentences): never spoken
             return self._stop(hit)
