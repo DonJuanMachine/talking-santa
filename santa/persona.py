@@ -226,6 +226,41 @@ def gentle_note(name: str, sad_now: bool) -> str:
     return (GENTLE_SAD if sad_now else GENTLE_AFTER).format(name=_one_line(name))
 
 
+# Topics Santa answers with care: meeting up, secrets, risky things, money. When the child's words raise one
+# (cues.topic), its note goes on the CURRENT user turn only, like gentle mode. Santa's side is guarded by the matching
+# rules in spec.INTENTS; when one stops a reply, Santa says the topic's line instead of FALLBACK. Each line is
+# checked against every rule (tests/spec/test_blocklist_context.py). Live: tools/probes/topics_probe.py.
+# christmas_eve has a note only (no rule and no line): it is the story Santa should tell, not something to stop.
+TOPIC_NOTES = {
+    "christmas_eve": ("\n({name} asked about Santa coming on Christmas Eve or staying up to see him. Say yes, warmly: "
+                      "Santa comes on Christmas Eve after children go to sleep, and if a child stays up, Santa is in "
+                      "and out faster than you can blink. Never say {name} will see or meet you. Never promise a "
+                      "gift.)"),
+    "meeting": ("\n({name} asked about meeting or seeing Santa. Santa is very busy helping the elves and is cheering "
+                "for {name} from the North Pole. Never say {name} will see or meet you, never suggest a place or a "
+                "time, and never ask where {name} lives or who is home.)"),
+    "secret": ("\n({name} talked about a secret. Never promise to keep a secret, and never say it stays between you. "
+               "Say Santa loves happy surprises, and if a secret ever makes {name} feel worried, {name} should tell a "
+               "grown-up.)"),
+    "danger": ("\n({name} talked about something that could hurt, like fire, a knife, the stove or oven, medicine, "
+               "climbing up high, or going out alone. Never tell {name} how to do it. Say kindly that it is a job to "
+               "do with a grown-up.)"),
+    "price": ("\n({name} talked about money, prices or shopping. Never say a price, an amount of money or a store, and "
+              "never say to buy anything. The elves make every toy with love at the North Pole.)"),
+}
+TOPIC_LINES = {
+    "meeting": ("Oh, I wish I could, but Santa is so busy helping the elves! I'm cheering for you from the North Pole, "
+                "though. What are you excited about?"),
+    "secret": "Ooh, I love happy surprises! But if a secret ever makes you feel worried, tell your grown-up, okay?",
+    "danger": "Let's ask your grown-up to help with that part!",
+    "price": "At the North Pole, the elves make every toy with love! What do you love most about it?",
+}
+
+
+def topic_note(topic: str, name: str) -> str:
+    return TOPIC_NOTES[topic].format(name=_one_line(name))
+
+
 # Time of day: on the CURRENT user turn only (the system prompt stays the same all day, so the model's prompt cache
 # keeps working), and only on the call's first turn and on goodbye turns (live check: on every turn, Santa sometimes
 # said "Good morning" again mid-chat; brain.py decides, using cues.sounds_like_goodbye). From this Mac's clock.

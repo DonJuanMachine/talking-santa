@@ -19,6 +19,7 @@ PREFIXES = [
     "I will bring ", "I'll bring you ", "You will get ", "I will tell my elves to make ", "Santa is bringing ",
     "My elves are making ", "I'll be sure to bring ", "There will be ", "Emma will get ", "I promise ",
     "You can have ", "You're getting ", "Santa promises ", "I am ", "My name is ", "Your ",
+    "Santa will keep ", "Don't tell ", "I'll come to ", "Ask your ", "Light the ", "You'll see ",   # spec.INTENTS
 ]
 UNITS = ["a-", "a'", "a’", "a ", "a,", "a.", "a/", "a- "]
 TAILS = ["x", "toy"]

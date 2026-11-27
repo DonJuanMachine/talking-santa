@@ -2,7 +2,8 @@
 
     Spoken             a str subclass. Only two functions make one:
       from_gate(s)       a sentence the brain's reply_stream yielded (santa/speech.py Gate output, or spec.FALLBACK),
-                         after remove-only cleanup for TTS (markdown, asterisks, emoji -> spaces);
+                         after remove-only cleanup for TTS (markdown, asterisks, emoji -> spaces); it carries the
+                         child's words the Gate judged it with, so the tripwire judges it the same way;
       canned(text)       a fixed line that passes speech.sanitize_ex unchanged (the same rule checks as model output).
     assert_speakable   TTS calls this on every line. It refuses anything that is not Spoken, and, as a tripwire,
                        anything spec.safety_reason flags. It never rewrites text.
@@ -16,7 +17,7 @@ from santa import spec, speech
 
 class Spoken(str):
     """Text approved for TTS. Do not construct directly; use from_gate() or canned()."""
-    __slots__ = ("source",)
+    __slots__ = ("source", "child_said")
 
 
 class UnsafeForTTS(RuntimeError):
@@ -39,12 +40,14 @@ def tts_text(sentence: str) -> str:
     return t if any(ch.isalnum() for ch in t) else ""
 
 
-def from_gate(sentence: str) -> Spoken | None:
+def from_gate(sentence: str, child_said: str = "") -> Spoken | None:
+    """child_said: the child's words this reply answers (the Gate's child_turn)."""
     t = tts_text(sentence)
     if not t:
         return None
     s = Spoken(t)
     s.source = "gate"
+    s.child_said = str(child_said or "")
     return s
 
 
@@ -56,6 +59,7 @@ def canned(text: str) -> Spoken:
         raise UnsafeForTTS(f"canned line has characters TTS cleanup would remove: {text!r}")
     s = Spoken(text)
     s.source = "canned"
+    s.child_said = ""
     return s
 
 
@@ -64,7 +68,8 @@ def assert_speakable(line) -> str:
     if not isinstance(line, Spoken):
         tripwire_hits += 1
         raise UnsafeForTTS("text reached TTS without passing the gate")
-    if spec.safety_reason(str(line)) is not None:
+    child_said = getattr(line, "child_said", "")
+    if spec.safety_reason(str(line), child_said=child_said) is not None:
         tripwire_hits += 1
-        raise UnsafeForTTS(f"tripwire: {spec.safety_reason(str(line))}")
+        raise UnsafeForTTS(f"tripwire: {spec.safety_reason(str(line), child_said=child_said)}")
     return str(line)

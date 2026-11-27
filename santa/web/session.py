@@ -579,7 +579,7 @@ class CallSession:
                     break
                 sentence, t_released = item
                 m.setdefault("first_sentence", t_released)
-                line = safe.from_gate(sentence)
+                line = safe.from_gate(sentence, child_said=text)
                 if line is None or refused:
                     continue
                 try:

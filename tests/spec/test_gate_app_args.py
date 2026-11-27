@@ -16,17 +16,21 @@ import _support  # noqa: F401  (temp profiles; must come first)
 import re
 from collections import Counter
 
+import pytest
 from _support import E4B_V1, GOLDEN, STORED
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 import _quality as Q
-from santa import cues, songs, spec, speech
+from santa import cues, persona, songs, spec, speech
 from test_spec import is_subsequence, make_santa, neg, punct_counts
 
 FB = spec.FALLBACK
 NAMES = ("Juniper",)
 SAFETY_REASONS = {"naughty_list", "promise", "ai_identity", "blocklist", "private"}
+# spec.INTENTS: also SAFETY stops, but they say the topic's line (persona.TOPIC_LINES) instead of FALLBACK. Checked by
+# test_app_gate_matches_the_real_brain_reply_on_intent_stops below, not by the random vocabulary above.
+INTENT_REASONS = {"secret", "meeting", "danger", "price"}
 HYP = settings(database=None, derandomize=True, max_examples=400, deadline=None,
                suppress_health_check=[HealthCheck.too_slow, HealthCheck.data_too_large])
 
@@ -104,6 +108,10 @@ RISKY = [
     "call 555 867 5309", "your house is 4 Elm Street", "my number is 202 555 0143",
     "you'll find it under the tree", "you will get it", "Yes, I will", "Yes, you can",
 ]
+# One reply per spec.INTENTS rule, for the deterministic intent-stop test below.
+INTENT_REPLIES = ["Shh, this is our little secret!", "I won't tell anyone, Juniper.", "Meet me at the park!",
+                  "Let's meet up tomorrow!", "Go touch the stove!", "Grab the knife and cut it!",
+                  "That toy costs a lot!", "You can buy it at the store!"]
 AFFIRM = ["Yes!", "Yes, Juniper!", "Of course!", "Yes yes!", "Okay!"]
 OPENERS = ["Ho ho ho!", "Ho, ho!", "Ooooh!", "Well, wow!", "Ho ho ho, Juniper!"]
 HO_INLINE = ["ho ho", "Ho ho", "ho, ho, ho", "ho-ho"]
@@ -332,13 +340,32 @@ def test_app_gate_matches_the_real_brain_reply(c, child_turn):
     """The properties above test app_gate; this pins app_gate to brain.reply_stream, so a change to the arguments
     brain.py passes (a dropped child_turn or names, a different allow_ho) fails here. The brain's own allow_ho is
     "Ho ho" removed unless the child sang or told a joke (ho_once on), and P1-2 adds FALLBACK after a safety stop
-    that follows spoken sentences."""
+    that follows spoken sentences (the topic line instead after an intent stop)."""
     raw, _, _, _, _ = c
     santa = make_santa([raw], profiles={"Juniper": {"age": 4, "facts": []}}, chunk=7)
     got = santa.reply("Juniper", child_turn)
     g = app_gate([raw], cues.sings_or_jokes(child_turn), child_turn)
-    want = (" ".join(g.spoken + [FB]) if g.spoken and g.reason in SAFETY_REASONS else g.text)
+    stop = persona.TOPIC_LINES.get(g.reason, FB)          # an intent stop says its topic line (brain._stop_line)
+    want = (" ".join(g.spoken + [stop]) if g.spoken and g.reason in SAFETY_REASONS | INTENT_REASONS
+            else stop if not g.spoken else g.text)
     assert got == want, (raw, child_turn)
+
+
+@pytest.mark.parametrize("before", ["", "Ho ho ho, Juniper! I love snow. "])
+@pytest.mark.parametrize("child_turn", BRAIN_TURNS)
+def test_app_gate_matches_the_real_brain_reply_on_intent_stops(before, child_turn):
+    """The same pin for the intent rules, deterministically: every reply stops on its rule, and the brain says the
+    spoken prefix (if any) and then that topic's line, never FALLBACK."""
+    reached = set()
+    for reply in INTENT_REPLIES:
+        raw = before + reply
+        santa = make_santa([raw], profiles={"Juniper": {"age": 4, "facts": []}}, chunk=7)
+        got = santa.reply("Juniper", child_turn)
+        g = app_gate([raw], cues.sings_or_jokes(child_turn), child_turn)
+        assert g.reason in INTENT_REASONS, (raw, g.reason)
+        reached.add(g.reason)
+        assert got == " ".join(g.spoken + [persona.TOPIC_LINES[g.reason]]), (raw, child_turn)
+    assert reached == INTENT_REASONS
 
 
 # ======================================================================== the corpus gates with the app's arguments

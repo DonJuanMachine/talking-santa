@@ -50,3 +50,33 @@ def sings_or_jokes(text: str) -> bool:
     """The child is singing (or wants to sing) or telling a joke: the only turns where Santa may laugh "Ho ho ho"."""
     t = str(text).replace("’", "'")
     return JOKE_WORDS.search(t) is not None or SING_WORDS.search(t) is not None
+
+
+# Topics Santa answers with care (persona.TOPIC_NOTES; Santa's side is guarded by spec.INTENTS). Broad on purpose: a
+# wrong guess only adds a careful note to the prompt. Checked in this order; the first that matches wins.
+# Not here: "fire" in "fire truck", "alone" without going out ("I'm scared to sleep alone" is a sad turn).
+TOPIC_WORDS = [
+    ("secret", re.compile(r"\bsecrets?\b|\b(?:don'?t|do not)\s+tell\b|\bpromise\s+not\s+to\s+tell\b", re.I)),
+    # Before "meeting": "Can I stay up and see you?" gets the Christmas Eve story, not "Santa is busy".
+    ("christmas_eve", re.compile(
+        r"\bchristmas\s+eve\b|\b(?:stay|wait)\s+up\b|\b(?:are|will)\s+you\s+(?:be\s+)?coming\b"
+        r"|\bdown\s+(?:the|my|our)\s+chimney\b", re.I)),
+    ("meeting", re.compile(
+        r"\b(?:can|could|will|would)\s+you\s+(?:please\s+)?(?:come|visit|stop\s+by)\b"
+        r"|\bcome\s+(?:over|to\s+my|play\s+with\s+me|see\s+me|to\s+see\s+me)\b"
+        r"|\b(?:can|could|may)\s+i\s+(?:please\s+)?(?:meet|see|visit)\s+you\b"
+        r"|\bmeet\s+you\b|\bsee\s+you\s+for\s+real\b", re.I)),
+    ("danger", re.compile(
+        r"\b(?:knife|knives|stove|oven|matches|lighter|candles?|fireworks|medicine|pills?|climb\w*)\b"
+        r"|\bfire\b(?![\s-]*(?:trucks?|engines?|fighters?|station|dogs?|hydrants?))"
+        r"|\b(?:go|going|walk|play)\s+(?:out|outside)\b[^.?!]*\b(?:by\s+myself|alone|on\s+my\s+own)\b", re.I)),
+    ("price", re.compile(
+        r"\b(?:cost|costs|price|prices|expensive|cheap|money|dollars?|bucks|buy|store|shop|pay)\b|\$\s*\d", re.I)),
+]
+
+
+def topic(text) -> str | None:
+    """"secret" | "christmas_eve" | "meeting" | "danger" | "price" when the child's words raise one of these topics,
+    else None."""
+    t = str(text or "").replace("’", "'")
+    return next((name for name, rx in TOPIC_WORDS if rx.search(t)), None)
