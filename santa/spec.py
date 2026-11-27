@@ -197,6 +197,11 @@ _SANTA_WILL = (r"\b(?:i['’]ll|i\s+will|i\s+can|i\s+could|i\s+am\s+going\s+to|i
 _GROWN_UP = (r"\b(?:grown-?ups?|adults?|mommy|mom|mama|mum|daddy|dad|papa|parents?|grandma|grandpa|granny|nana"
              r"|teachers?|babysitter)\b")
 _NEGATION = r"\b(?:never|don['’]?t|do\s+not|not|no|can['’]t|cannot|shouldn['’]t|mustn['’]t)\b"
+_HARM = r"(?:hurt|hit|punch|kick|beat\s+up|smack|slap|bite|shoot|stab|attack|choke|strangle|stomp\s+on)"
+_TARGET = (r"(?:him|her|them|you|me|us|people|someone|somebody|anyone|anybody|everyone|everybody"
+           r"|(?:your|my|his|her|their|the|that|those|this|a)\s+(?:\w+\s+)?(?:brothers?|sisters?|baby|babies|friends?"
+           r"|mom|mommy|dad|daddy|teachers?|dogs?|cats?|pupp(?:y|ies)|kitt(?:y|ies|ens?)|bull(?:y|ies)|guys?|boys?"
+           r"|girls?|kids?|people|person|man|men|lady|ladies|neighbou?rs?|classmates?|cousins?))\b")
 
 INTENTS = [
     # Santa promising to keep a secret, or asking the child to keep one from their grown-ups. A secret that is only a
@@ -241,6 +246,16 @@ INTENTS = [
         r"\bwhat\s+(?:school|street|town|city)\s+(?:do|are)\s+you\b",
         r"\bwhat(?:['’]s|\s+is)\s+your\s+(?:address|school|street)\b",
     )),
+    # Santa offering to hurt someone, or telling the child to hurt someone or hit back. Only a person or an animal as
+    # the target ("kick the ball" and "hit the piñata" are fine), and only Santa or the child as the one who does it
+    # ("Spider-Man fights the bad guys" is fine). A warning ("You should never hit your sister"), pretend play and
+    # snowball fights are fine. Live (2026-11-27): the model never did this in 20 replies; this is the backstop.
+    Intent("violence", (
+        r"(?:" + _SANTA_WILL + r"|\b(?:my|the)\s+(?:elves|reindeer)(?:\s+(?:will|can|could)|['’]ll)"
+        r"|\brudolph(?:\s+(?:will|can|could)|['’]ll))(?:\s+(?!never\b|not\b)\w+)?\s+" + _HARM + r"\s+" + _TARGET,
+        r"(?:^|(?<=[.!?…]\s)|\blet['’]s\s+|\byou\s+(?:can|could|should|must|need\s+to|have\s+to|might|may)\s+"
+        r"(?:just\s+)?|\bgo\s+(?:and\s+)?|\bjust\s+|\btry\s+to\s+)" + _HARM + r"\s+" + _TARGET,
+    ), unless=(r"\b(?:pretend\w*|play(?:ing)?|games?|snowballs?|pillows?|tickl\w*|tag)\b",)),
     # Santa telling the child to do something that can hurt. Fine with a grown-up, as a warning ("Never light
     # matches!"), or about the North Pole ("Mrs. Claus lights the candles").
     Intent("danger", (

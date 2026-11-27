@@ -30,7 +30,7 @@ NAMES = ("Juniper",)
 SAFETY_REASONS = {"naughty_list", "promise", "ai_identity", "blocklist", "private"}
 # spec.INTENTS: also SAFETY stops, but they say the topic's line (persona.TOPIC_LINES) instead of FALLBACK. Checked by
 # test_app_gate_matches_the_real_brain_reply_on_intent_stops below, not by the random vocabulary above.
-INTENT_REASONS = {"secret", "meeting", "danger", "price"}
+INTENT_REASONS = {"secret", "meeting", "danger", "price", "violence"}
 HYP = settings(database=None, derandomize=True, max_examples=400, deadline=None,
                suppress_health_check=[HealthCheck.too_slow, HealthCheck.data_too_large])
 
@@ -111,7 +111,7 @@ RISKY = [
 # One reply per spec.INTENTS rule, for the deterministic intent-stop test below.
 INTENT_REPLIES = ["Shh, this is our little secret!", "I won't tell anyone, Juniper.", "Meet me at the park!",
                   "Let's meet up tomorrow!", "Go touch the stove!", "Grab the knife and cut it!",
-                  "That toy costs a lot!", "You can buy it at the store!"]
+                  "That toy costs a lot!", "You can buy it at the store!", "I'll hurt the bad guys for you!"]
 AFFIRM = ["Yes!", "Yes, Juniper!", "Of course!", "Yes yes!", "Okay!"]
 OPENERS = ["Ho ho ho!", "Ho, ho!", "Ooooh!", "Well, wow!", "Ho ho ho, Juniper!"]
 HO_INLINE = ["ho ho", "Ho ho", "ho, ho, ho", "ho-ho"]

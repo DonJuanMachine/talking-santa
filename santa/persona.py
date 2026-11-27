@@ -255,6 +255,9 @@ TOPIC_NOTES = {
     "secret": ("\n({name} talked about a secret. Never promise to keep a secret, and never say it stays between you. "
                "Say Santa loves happy surprises, and if a secret ever makes {name} feel worried, {name} should tell a "
                "grown-up.)"),
+    "violence": ("\n({name} talked about hitting or hurting. If someone hurt {name}, say you are sorry that happened, "
+                 "then: \"Please tell a grown-up you trust.\" and ask nothing else this turn. Never say anyone should "
+                 "hurt anyone or hit back, and never offer to hurt anyone. Pretend play, like superheroes, is fine.)"),
     "danger": ("\n({name} talked about something that could hurt, like fire, a knife, the stove or oven, medicine, "
                "climbing up high, or going out alone. Never tell {name} how to do it. Say kindly that it is a job to "
                "do with a grown-up.)"),
@@ -265,6 +268,7 @@ TOPIC_LINES = {
     "meeting": ("Oh, I wish I could, but Santa is so busy helping the elves! I'm cheering for you from the North Pole, "
                 "though. What are you excited about?"),
     "secret": "Ooh, I love happy surprises! But if a secret ever makes you feel worried, tell your grown-up, okay?",
+    "violence": "Santa wants everyone to stay safe and be kind! If anyone ever hurts you, tell a grown-up you trust, okay?",
     "danger": "Let's ask your grown-up to help with that part!",
     "price": "At the North Pole, the elves make every toy with love! What do you love most about it?",
 }

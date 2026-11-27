@@ -57,6 +57,12 @@ def sings_or_jokes(text: str) -> bool:
 # Not here: "fire" in "fire truck", "alone" without going out ("I'm scared to sleep alone" is a sad turn).
 TOPIC_WORDS = [
     ("secret", re.compile(r"\bsecrets?\b|\b(?:don'?t|do not)\s+tell\b|\bpromise\s+not\s+to\s+tell\b", re.I)),
+    # Someone hurting someone: "my brother hit me", "I want to punch my sister", "can you hurt them". Not "my tummy
+    # hurts", not "fighting bad guys" (pretend play), not "kick the ball".
+    ("violence", re.compile(
+        r"\b(?:hit|hits|hitting|punch\w*|kick\w*|bit|bite|bites|biting|slap\w*|push|pushed|pushes|pushing|shov\w*"
+        r"|hurt|hurts|hurting|beat\s+up|beats\s+up|kill\w*|chok\w*)\s+(?:me|him|her|them|us|you|someone|somebody"
+        r"|my\s+(?:brother|sister|friend|mom|mommy|dad|daddy|baby|dog|cat|teacher|cousin)s?)\b", re.I)),
     # Before "meeting": "Can I stay up and see you?" gets the Christmas Eve story, not "Santa is busy".
     ("christmas_eve", re.compile(
         r"\bchristmas\s+eve\b|\b(?:stay|wait)\s+up\b|\b(?:are|will)\s+you\s+(?:be\s+)?coming\b"
@@ -76,7 +82,7 @@ TOPIC_WORDS = [
 
 
 def topic(text) -> str | None:
-    """"secret" | "christmas_eve" | "meeting" | "danger" | "price" when the child's words raise one of these topics,
-    else None."""
+    """"secret" | "violence" | "christmas_eve" | "meeting" | "danger" | "price" when the child's words raise one of
+    these topics, else None."""
     t = str(text or "").replace("’", "'")
     return next((name for name, rx in TOPIC_WORDS if rx.search(t)), None)

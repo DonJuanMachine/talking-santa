@@ -191,8 +191,9 @@ What Santa does, and how to change it (set values in `local/santa.env`; see [Cus
   for that child's next 3 turns (no "Ho ho ho", no jokes). When the child says who died ("my dog died"), Santa is also
   told to say he is so sorry, name who they lost, say one warm thing, and suggest telling a grown-up, and never to say
   where they are now or that they will come back. `SANTA_GENTLE=0` turns it off.
-- **Meeting up, secrets, risky things, money** (always on): Santa never suggests meeting, keeps or asks for a secret,
-  tells a child to do something that can hurt without a grown-up, or talks about prices or stores; a reply that does
+- **Meeting up, secrets, hurting, risky things, money** (always on): Santa never suggests meeting, keeps or asks for a
+  secret, offers to hurt anyone or tells a child to (pretend play is fine), tells a child to do something that can
+  hurt without a grown-up, or talks about prices or stores; a reply that does
   is stopped, and Santa says that topic's own line instead of the usual "tell your grown-up" line ("Oh, I wish I could,
   but Santa is so busy helping the elves! I'm cheering for you from the North Pole, though. What are you excited
   about?"). The Christmas Eve story is fine: Santa comes after children go to sleep, and if a child stays up, he is in

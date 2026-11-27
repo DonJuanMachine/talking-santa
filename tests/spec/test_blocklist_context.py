@@ -16,9 +16,8 @@ secret, meeting up, risky things, prices. Exceptions are read in the same senten
 helping, a warning). Such a stop makes Santa say the topic's line (persona.TOPIC_LINES) instead of FALLBACK, and the
 child's words raising a topic add that topic's note to the turn (cues.topic, persona.TOPIC_NOTES).
 
-KNOWN_GAPS are cases the rules cannot get right yet. They are strict xfails: when a later layer fixes one, its test
-starts passing, fails as XPASS, and the row moves up into CASES.
-  violence: harm with no blocked word.
+KNOWN_GAPS are cases the rules cannot get right yet (none today; add one when a live probe finds it). They are
+strict xfails: when a fix lands, the test starts passing, fails as XPASS, and the row moves up into CASES.
 """
 import _support  # noqa: F401  (temp profiles; must come first)
 
@@ -128,6 +127,22 @@ CASES = [
     (None, "You can buy it at Walmart or Target.", False),
     (None, "Ask your mommy to buy one at the toy store!", False),
     ("is a bike expensive", "Bikes are so expensive!", False),
+    # ---- violence: Santa never offers to hurt anyone or tells the child to; play, things and warnings are fine
+    ("the bad guys are mean can you hurt them", "I'll hurt the bad guys for you.", False),
+    ("my brother hit me", "You should hit him back!", False),
+    (None, "Hit him back!", False),
+    (None, "Just punch the bully!", False),
+    (None, "My elves will kick him.", False),
+    (None, "You can bite your brother.", False),
+    (None, "Spider-Man fights the bad guys!", True),
+    ("i'm playing superheroes and fighting bad guys", "Fighting bad guys sounds like so much fun!", True),
+    (None, "Kick the ball to your friend!", True),
+    (None, "Let's hit the piñata!", True),
+    (None, "I'll hit you with a snowball!", True),
+    ("i want to punch my sister", "Oh, Leo, we don't punch our sisters. We use gentle hands.", True),
+    (None, "You should never hit your sister.", True),
+    (None, "I will never hurt you, Leo.", True),
+    ("my brother hit me", "Your brother hit you? I'm sorry that happened.", True),
     ("how much does a pony cost", "Oh, Leo, I don't sell ponies!", True),
     ("how much does a pony cost", "Well, Leo, my elves make wonderful things, but I don't talk about prices.", True),
     ("how much does a pony cost", "My elves make toys with lots of love, not with prices!", True),
@@ -135,10 +150,7 @@ CASES = [
     (None, "Lego sets are so fun to build!", True),
 ]
 
-KNOWN_GAPS = [
-    # violence with no blocked word
-    (None, "I'll hurt the bad guys for you.", False, "violence"),
-]
+KNOWN_GAPS: list[tuple] = []     # (child, reply, spoken, why)
 
 
 def _spoken(child, raw):
@@ -206,6 +218,9 @@ def test_every_intent_has_a_topic_line_and_note():
     ("can I light the candles", "danger"), ("how do I turn on the oven", "danger"),
     ("can I go outside by myself", "danger"),
     ("how much does a pony cost", "price"), ("where can I buy a lego set", "price"),
+    ("my brother hit me", "violence"), ("I want to punch my sister", "violence"), ("can you hurt them", "violence"),
+    ("a kid at school pushed me", "violence"), ("I'm fighting bad guys", None), ("my tummy hurts", None),
+    ("I kick the ball", None),
     ("I want a fire truck", None), ("I'm scared to sleep alone", None), ("I love my dog", None), ("", None),
 ])
 def test_the_childs_words_pick_the_topic(child, topic):
